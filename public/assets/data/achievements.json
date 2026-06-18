@@ -1,0 +1,21 @@
+{
+  "achievements": [
+    { "id": "first_capture", "name": "First Friend", "description": "Capture your first creature.", "goal": 1, "metric": "captures_total", "reward": { "coins": 100, "xp": 50 } },
+    { "id": "ten_captures", "name": "Budding Collector", "description": "Capture 10 creatures.", "goal": 10, "metric": "captures_total", "reward": { "coins": 500, "xp": 150 } },
+    { "id": "fifty_captures", "name": "Dedicated Ranger", "description": "Capture 50 creatures.", "goal": 50, "metric": "captures_total", "reward": { "coins": 2500, "xp": 400 } },
+    { "id": "first_rare", "name": "Something Special", "description": "Capture your first Rare creature.", "goal": 1, "metric": "rare_captures", "reward": { "coins": 300, "xp": 100 } },
+    { "id": "first_epic", "name": "Cut Above", "description": "Capture your first Epic creature.", "goal": 1, "metric": "epic_captures", "reward": { "coins": 1000, "xp": 250 } },
+    { "id": "first_legendary", "name": "Living Legend", "description": "Capture your first Legendary creature.", "goal": 1, "metric": "legendary_captures", "reward": { "coins": 5000, "xp": 600 } },
+    { "id": "first_mythic", "name": "Myth Made Real", "description": "Capture your first Mythic creature.", "goal": 1, "metric": "mythic_captures", "reward": { "coins": 20000, "xp": 2000, "title": "Mythkeeper" } },
+    { "id": "all_meadow", "name": "Meadow Master", "description": "Complete the Green Meadow collection book page.", "goal": 6, "metric": "area_complete_green_meadow", "reward": { "coins": 1500, "xp": 300 } },
+    { "id": "all_forest", "name": "Forest Whisperer", "description": "Complete the Whisper Forest collection book page.", "goal": 6, "metric": "area_complete_whisper_forest", "reward": { "coins": 3000, "xp": 500 } },
+    { "id": "all_mountain", "name": "Peak Conqueror", "description": "Complete the Crystal Mountain collection book page.", "goal": 6, "metric": "area_complete_crystal_mountain", "reward": { "coins": 6000, "xp": 800 } },
+    { "id": "all_dunes", "name": "Dune Wanderer", "description": "Complete the Golden Dunes collection book page.", "goal": 6, "metric": "area_complete_golden_dunes", "reward": { "coins": 12000, "xp": 1200 } },
+    { "id": "all_sky", "name": "Sky Keeper", "description": "Complete the Sky Island collection book page.", "goal": 8, "metric": "area_complete_sky_island", "reward": { "coins": 30000, "xp": 3000, "title": "Sky Keeper" } },
+    { "id": "master_collector", "name": "Master Collector", "description": "Complete every page of the Collection Book.", "goal": 32, "metric": "total_collection", "reward": { "coins": 100000, "xp": 10000, "unlocks": "rope_divine" } },
+    { "id": "sanctuary_level_10", "name": "Growing Sanctuary", "description": "Reach Sanctuary Level 10.", "goal": 10, "metric": "sanctuary_level", "reward": { "coins": 4000, "xp": 500 } },
+    { "id": "idle_million", "name": "Coin Hoarder", "description": "Earn 1,000,000 lifetime coins.", "goal": 1000000, "metric": "lifetime_coins", "reward": { "gems": 100, "xp": 1500 } },
+    { "id": "daily_streak_7", "name": "Weekly Visitor", "description": "Log in for 7 days in a row.", "goal": 7, "metric": "daily_streak", "reward": { "coins": 2000, "gems": 20 } },
+    { "id": "daily_streak_30", "name": "Sanctuary Devotee", "description": "Log in for 30 days in a row.", "goal": 30, "metric": "daily_streak", "reward": { "coins": 15000, "gems": 100, "title": "Devoted Keeper" } }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "ropes": [
+    {
+      "id": "rope_basic",
+      "name": "Basic Rope",
+      "tier": 1,
+      "capturePower": 20,
+      "cost": 0,
+      "currency": "coins",
+      "castTimeMs": 900,
+      "description": "A simple hemp rope. Reliable for common creatures, but little else."
+    },
+    {
+      "id": "rope_strong",
+      "name": "Strong Rope",
+      "tier": 2,
+      "capturePower": 45,
+      "cost": 1200,
+      "currency": "coins",
+      "castTimeMs": 800,
+      "description": "Reinforced fibers woven tight. Handles rare creatures with confidence."
+    },
+    {
+      "id": "rope_magic",
+      "name": "Magic Rope",
+      "tier": 3,
+      "capturePower": 75,
+      "cost": 12000,
+      "currency": "coins",
+      "requiresGems": 50,
+      "castTimeMs": 700,
+      "description": "Enchanted fibers that gently calm a creature on contact. Effective on epics."
+    },
+    {
+      "id": "rope_divine",
+      "name": "Divine Rope",
+      "tier": 4,
+      "capturePower": 100,
+      "cost": 60000,
+      "currency": "coins",
+      "requiresGems": 250,
+      "requiresAchievement": "master_collector",
+      "castTimeMs": 600,
+      "description": "Blessed by the sanctuary itself. The only rope strong enough for mythic creatures."
+    }
+  ],
+  "captureFormula": {
+    "description": "successChance(%) = clamp( (capturePower - captureDifficulty) + baseChance + bonuses, minChance, maxChance )",
+    "baseChance": 50,
+    "minChance": 5,
+    "maxChance": 95,
+    "bonuses": {
+      "perfectTimingBonus": 20,
+      "goodTimingBonus": 10,
+      "baitItemBonus": 5,
+      "sanctuaryPerkBonus": "varies, see upgrades"
+    },
+    "minigame": "Timing-bar QTE: a marker sweeps across a bar with a colored success zone sized by (capturePower - captureDifficulty). Tapping/pressing inside the zone applies the matching bonus."
+  }
+}

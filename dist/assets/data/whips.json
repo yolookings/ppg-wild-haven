@@ -1,0 +1,36 @@
+{
+  "whips": [
+    {
+      "id": "whip_basic",
+      "name": "Basic Whip",
+      "tier": 1,
+      "weakeningPower": 12,
+      "cost": 0,
+      "description": "A standard rope whip. Weakens small creatures slightly."
+    },
+    {
+      "id": "whip_leather",
+      "name": "Leather Whip",
+      "tier": 2,
+      "weakeningPower": 28,
+      "cost": 800,
+      "description": "Stiff woven leather. Confidently weakens rare beasts."
+    },
+    {
+      "id": "whip_iron",
+      "name": "Iron Whip",
+      "tier": 3,
+      "weakeningPower": 48,
+      "cost": 6000,
+      "description": "Studded with iron links. Very effective for epic creatures."
+    },
+    {
+      "id": "whip_energy",
+      "name": "Energy Whip",
+      "tier": 4,
+      "weakeningPower": 75,
+      "cost": 24000,
+      "description": "Surges with taming energy. Weakens mythic beasts instantly."
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "recipes": [
+    {
+      "id": "recipe_jackalope",
+      "parentA": "meadow_rabbit",
+      "parentB": "silver_fox",
+      "offspring": "jackalope",
+      "successRate": 75,
+      "coinCost": 350
+    },
+    {
+      "id": "recipe_pegasus",
+      "parentA": "sky_mouse",
+      "parentB": "spotted_fawn",
+      "offspring": "pegasus",
+      "successRate": 60,
+      "coinCost": 1200
+    },
+    {
+      "id": "recipe_t_rex",
+      "parentA": "desert_lizard",
+      "parentB": "geode_golem",
+      "offspring": "t_rex",
+      "successRate": 45,
+      "coinCost": 5000
+    },
+    {
+      "id": "recipe_cerberus",
+      "parentA": "silver_fox",
+      "parentB": "aurora_wolf",
+      "offspring": "cerberus",
+      "successRate": 50,
+      "coinCost": 4000
+    },
+    {
+      "id": "recipe_dragon",
+      "parentA": "thunder_drake",
+      "parentB": "phoenix",
+      "offspring": "dragon",
+      "successRate": 30,
+      "coinCost": 15000
+    }
+  ]
+}
