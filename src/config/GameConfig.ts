@@ -6,6 +6,7 @@ import { MainMenuScene } from '../scenes/MainMenuScene';
 import { ExploreScene } from '../scenes/ExploreScene';
 import { SanctuaryScene } from '../scenes/SanctuaryScene';
 import { UIScene } from '../scenes/UIScene';
+import { TravelScene } from '../scenes/TravelScene';
 
 export const GameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -32,6 +33,7 @@ export const GameConfig: Phaser.Types.Core.GameConfig = {
     MainMenuScene,
     ExploreScene,
     SanctuaryScene,
-    UIScene
+    UIScene,
+    TravelScene
   ]
 };

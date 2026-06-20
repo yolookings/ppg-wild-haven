@@ -1,40 +1,66 @@
-// src/entities/WildCreature.ts
 import Phaser from 'phaser';
 import { Creature } from '../data/types';
+import { CreatureVisuals } from '../utils/CreatureVisuals';
+
+type CreatureState = 'IDLE' | 'WANDER';
 
 export class WildCreature extends Phaser.GameObjects.Container {
+  declare public body: Phaser.Physics.Arcade.Body;
+
   public creatureData: Creature;
-  private sprite!: Phaser.GameObjects.Sprite;
+  private creatureSprite!: Phaser.GameObjects.Sprite;
   private shadow!: Phaser.GameObjects.Graphics;
   private glow!: Phaser.GameObjects.Graphics;
+  private baseScale: number;
 
-  private jumpTimer!: Phaser.Time.TimerEvent;
+  private fsmState: CreatureState = 'IDLE';
+  private stateTimer = 0;
+  private wanderAngle = 0;
+  private wanderSpeed = 60;
+  private facingDirection: 'down' | 'up' | 'left' | 'right' = 'down';
+
+  // Acceleration variables for realistic movement
+  private currentVx = 0;
+  private currentVy = 0;
+  private targetVx = 0;
+  private targetVy = 0;
+
   private onInteractCallback: (c: WildCreature) => void;
+
+  // Biome boundary constraints
+  private readonly MIN_X = 50;
+  private readonly MAX_X = 2350;
+  private readonly MIN_Y = 450;
+  private readonly MAX_Y = 1750;
 
   constructor(scene: Phaser.Scene, x: number, y: number, creatureData: Creature, onInteract: (c: WildCreature) => void) {
     super(scene, x, y);
     this.creatureData = creatureData;
     this.onInteractCallback = onInteract;
+    const isBoss = creatureData.rarity === 'Mythic';
+    const visuals = CreatureVisuals.getVisuals(creatureData);
+    const scaleFactor = isBoss ? 3.50 : 1.75;
+    this.baseScale = scaleFactor * visuals.scaleMult;
+    const ringRadius = (isBoss ? 20 : 13) * visuals.scaleMult * scaleFactor;
+    const shadowW = (isBoss ? 20 : 14) * visuals.scaleMult * scaleFactor;
+    const shadowH = (isBoss ? 7 : 4) * visuals.scaleMult * scaleFactor;
 
-    // 1. Shadow underneath
     this.shadow = scene.add.graphics();
     this.shadow.fillStyle(0x000000, 0.2);
-    this.shadow.fillEllipse(0, 8, 14, 5);
+    this.shadow.fillEllipse(0, 8, shadowW, shadowH);
     this.add(this.shadow);
 
-    // 2. Glow ring based on rarity
     this.glow = scene.add.graphics();
-    let rarityColor = 0xb5b5b5; // Common
+    let rarityColor = 0xb5b5b5;
     if (creatureData.rarity === 'Rare') rarityColor = 0x4fa3e3;
     else if (creatureData.rarity === 'Epic') rarityColor = 0xb05fe0;
     else if (creatureData.rarity === 'Legendary') rarityColor = 0xffc93c;
     else if (creatureData.rarity === 'Mythic') rarityColor = 0xff5c8a;
 
-    this.glow.lineStyle(1.5, rarityColor, 0.6);
-    this.glow.strokeCircle(0, 4, 13);
+    this.glow.lineStyle(2, rarityColor, 0.8);
+    this.glow.strokeCircle(0, 4, ringRadius);
     this.add(this.glow);
 
-    // Subtle breathing animation for glow
     scene.tweens.add({
       targets: this.glow,
       alpha: 0.2,
@@ -45,114 +71,198 @@ export class WildCreature extends Phaser.GameObjects.Container {
       ease: 'Sine.easeInOut'
     });
 
-    // 3. Creature Sprite mapping fallback
-    let spriteKey = 'creature_meadow';
-    if (creatureData.area === 'whisper_forest') spriteKey = 'creature_forest';
-    else if (creatureData.area === 'crystal_mountain') spriteKey = 'creature_mountain';
-    else if (creatureData.area === 'golden_dunes') spriteKey = 'creature_dunes';
-    else if (creatureData.area === 'sky_island') spriteKey = 'creature_sky';
+    if (!scene.textures.exists(visuals.spriteKey)) {
+      this.setVisible(false);
+      this.creatureSprite = scene.add.sprite(0, 0, 'creature_slime');
+      this.creatureSprite.setVisible(false);
+      this.add(this.creatureSprite);
+      return;
+    }
 
-    this.sprite = scene.add.sprite(0, 0, spriteKey);
-    this.sprite.setScale(0.65); // Smaller size as requested!
-    this.sprite.setOrigin(0.5, 0.5);
-    this.sprite.setInteractive({ useHandCursor: true });
-    this.add(this.sprite);
+    this.creatureSprite = scene.add.sprite(0, 0, visuals.spriteKey);
+    this.creatureSprite.setTint(visuals.tint);
+    this.creatureSprite.setScale(this.baseScale);
+    this.creatureSprite.setOrigin(0.5, 0.5);
+    this.creatureSprite.setInteractive({ useHandCursor: true });
+    this.add(this.creatureSprite);
 
-    // Click behavior
-    this.sprite.on('pointerdown', () => {
+    this.creatureSprite.on('pointerdown', () => {
       this.onInteractCallback(this);
     });
 
-    // 4. Idle Squash/Stretch
-    scene.tweens.add({
-      targets: this.sprite,
-      scaleY: 0.65 * 1.1,
-      scaleX: 0.65 * 1.25,
-      y: 1,
-      duration: 1000 + Math.random() * 500,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
+    if (!visuals.isAnimated) {
+      scene.tweens.add({
+        targets: this.creatureSprite,
+        scaleY: this.baseScale * 1.1,
+        scaleX: this.baseScale * 1.25,
+        y: 1,
+        duration: 1000 + Math.random() * 500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
 
-    // Start hopping movement script
-    this.startHoppings();
+    scene.physics.add.existing(this);
+    this.body.setSize(20, 6);
+    this.body.setOffset(-10, 6);
+
+    this.enterIdle();
   }
 
-  private startHoppings(): void {
-    // Every 3-6 seconds, make the creature hop to a nearby position
-    this.jumpTimer = this.scene.time.addEvent({
-      delay: 3000 + Math.random() * 4000,
-      callback: () => this.hopRandomly(),
-      loop: true
-    });
+  private enterIdle(): void {
+    this.fsmState = 'IDLE';
+    this.targetVx = 0;
+    this.targetVy = 0;
+    // Idle duration between 1.5 and 3.5 seconds
+    this.stateTimer = 1.5 + Math.random() * 2.0;
   }
 
-  private hopRandomly(): void {
-    if (!this.scene) return;
+  private enterWander(): void {
+    this.fsmState = 'WANDER';
+    // Calculate structure free-movement
+    this.wanderAngle = Math.random() * Math.PI * 2; // angle 0 to 360 degrees
+    this.stateTimer = 1.0 + Math.random() * 2.0; // wander duration 1-3 seconds
+    this.wanderSpeed = 25 + Math.random() * 25; // slower max speed for creatures: 25 to 50
 
-    // Hop range: within a radius of 60px
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 30 + Math.random() * 40;
-    const targetX = this.x + Math.cos(angle) * dist;
-    const targetY = this.y + Math.sin(angle) * dist;
+    // Vektor kecepatan target
+    this.targetVx = Math.cos(this.wanderAngle) * this.wanderSpeed;
+    this.targetVy = Math.sin(this.wanderAngle) * this.wanderSpeed;
+  }
 
-    // Keep within reasonable explore bounds
-    const clampedX = Math.max(100, Math.min(this.scene.cameras.main.width - 100, targetX));
-    const clampedY = Math.max(150, Math.min(this.scene.cameras.main.height - 150, targetY));
+  private constrainPosition(): void {
+    let needsAdjust = false;
+    if (this.x < this.MIN_X) {
+      this.x = this.MIN_X;
+      this.targetVx = -this.targetVx;
+      needsAdjust = true;
+    }
+    if (this.x > this.MAX_X) {
+      this.x = this.MAX_X;
+      this.targetVx = -this.targetVx;
+      needsAdjust = true;
+    }
+    if (this.y < this.MIN_Y) {
+      this.y = this.MIN_Y;
+      this.targetVy = -this.targetVy;
+      needsAdjust = true;
+    }
+    if (this.y > this.MAX_Y) {
+      this.y = this.MAX_Y;
+      this.targetVy = -this.targetVy;
+      needsAdjust = true;
+    }
+    if (needsAdjust) {
+      // Re-calculate bounce angle to keep wander smooth
+      this.wanderAngle = Math.atan2(this.targetVy, this.targetVx);
+    }
+  }
 
-    const duration = 400;
+  public isTethered = false;
 
-    this.scene.tweens.add({
-      targets: this,
-      x: clampedX,
-      y: clampedY,
-      duration: duration,
-      ease: 'Linear'
-    });
+  update(_time: number, delta: number): void {
+    if (!this.scene || !this.scene.scene.isActive()) return;
 
-    // Arc jump Y offset
-    this.scene.tweens.add({
-      targets: this.sprite,
-      y: -15,
-      scaleY: 0.65 * 1.4,
-      scaleX: 0.65 * 1.0,
-      duration: duration / 2,
-      yoyo: true,
-      ease: 'Quad.easeOut',
-      onComplete: () => {
-        // Squash on land
-        this.scene.tweens.add({
-          targets: this.sprite,
-          scaleY: 0.65 * 0.9,
-          scaleX: 0.65 * 1.35,
-          y: 3,
-          duration: 80,
-          yoyo: true,
-          ease: 'Quad.easeInOut',
-          onComplete: () => {
-            this.sprite.y = 0;
-            this.sprite.setScale(0.65);
-          }
-        });
+    const visuals = CreatureVisuals.getVisuals(this.creatureData);
+
+    if (this.isTethered) {
+      const vx = this.body.velocity.x;
+      const vy = this.body.velocity.y;
+
+      if (vx !== 0 || vy !== 0) {
+        if (Math.abs(vx) > Math.abs(vy)) {
+          this.facingDirection = vx < 0 ? 'left' : 'right';
+        } else {
+          this.facingDirection = vy < 0 ? 'up' : 'down';
+        }
       }
-    });
 
-    // Scaling shadow size during jump
-    this.scene.tweens.add({
-      targets: this.shadow,
-      scale: 0.6,
-      alpha: 0.1,
-      duration: duration / 2,
-      yoyo: true,
-      ease: 'Quad.easeOut'
-    });
+      if (visuals.isAnimated) {
+        let animKey = `animal_${visuals.animalType}_idle_${this.facingDirection}`;
+        if (vx !== 0 || vy !== 0) {
+          animKey = `animal_${visuals.animalType}_walk_${this.facingDirection}`;
+        }
+        if (this.creatureSprite.anims) {
+          if (this.creatureSprite.anims.currentAnim?.key !== animKey) {
+            this.creatureSprite.play(animKey);
+          }
+        }
+        this.creatureSprite.setFlipX(false);
+      } else {
+        if (vx !== 0) {
+          this.creatureSprite.setFlipX(vx < 0);
+        }
+      }
+      return;
+    }
+
+    const dt = delta / 1000;
+    this.stateTimer -= dt;
+
+    // Realistic Acceleration & Deceleration for Creature AI
+    // We accelerate/decelerate towards target velocities at a rate of 80 units/s^2
+    const accelRate = 80;
+    if (Math.abs(this.currentVx - this.targetVx) < accelRate * dt) {
+      this.currentVx = this.targetVx;
+    } else {
+      this.currentVx += Math.sign(this.targetVx - this.currentVx) * accelRate * dt;
+    }
+
+    if (Math.abs(this.currentVy - this.targetVy) < accelRate * dt) {
+      this.currentVy = this.targetVy;
+    } else {
+      this.currentVy += Math.sign(this.targetVy - this.currentVy) * accelRate * dt;
+    }
+
+    this.body.setVelocity(this.currentVx, this.currentVy);
+
+    // Apply sprite flip or play Phaser animations
+    if (this.currentVx !== 0 || this.currentVy !== 0) {
+      if (Math.abs(this.currentVx) > Math.abs(this.currentVy)) {
+        this.facingDirection = this.currentVx < 0 ? 'left' : 'right';
+      } else {
+        this.facingDirection = this.currentVy < 0 ? 'up' : 'down';
+      }
+    }
+
+    if (visuals.isAnimated) {
+      let animKey = `animal_${visuals.animalType}_idle_${this.facingDirection}`;
+      if (this.fsmState === 'WANDER' && (this.currentVx !== 0 || this.currentVy !== 0)) {
+        // Since wandering speed is slow, we can use walk
+        animKey = `animal_${visuals.animalType}_walk_${this.facingDirection}`;
+      }
+      if (this.creatureSprite.anims) {
+        if (this.creatureSprite.anims.currentAnim?.key !== animKey) {
+          this.creatureSprite.play(animKey);
+        }
+      }
+      this.creatureSprite.setFlipX(false);
+    } else {
+      if (this.currentVx !== 0) {
+        this.creatureSprite.setFlipX(this.currentVx < 0);
+      }
+    }
+
+    // State Machine logic
+    if (this.fsmState === 'IDLE') {
+      if (this.stateTimer <= 0) {
+        this.enterWander();
+      }
+    } else if (this.fsmState === 'WANDER') {
+      this.constrainPosition();
+
+      if (this.stateTimer <= 0) {
+        // Roll chance: 20% chance after each wander cycle to enter IDLE
+        if (Math.random() < 0.20) {
+          this.enterIdle();
+        } else {
+          this.enterWander();
+        }
+      }
+    }
   }
 
   public destroy(): void {
-    if (this.jumpTimer) {
-      this.jumpTimer.destroy();
-    }
     super.destroy();
   }
 }

@@ -94,6 +94,8 @@ export interface OwnedCreature {
   nickname?: string;
   level: number;          // sanctuary creature leveling (see §10.4)
   placedSlot?: number;    // optional slot index in sanctuary
+  trait?: 'Rideable' | 'None';
+  canFly?: boolean;
 }
 
 export interface PlayerState {
@@ -115,6 +117,11 @@ export interface PlayerState {
   achievementProgress: Record<string, number>;
   sanctuaryLevel: number;
   sanctuaryDecorSlots: number;
+  activeMountInstanceId?: string;
+  tetheredCreatureId?: string | null;
+  activeQuestId?: string;
+  completedQuestIds?: string[];
+  tutorialStep?: number;
   lastSavedAt: number;
   lastOnlineAt: number;
   dailyStreak: number;

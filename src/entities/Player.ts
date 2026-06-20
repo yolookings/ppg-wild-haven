@@ -1,17 +1,27 @@
-// src/entities/Player.ts
 import Phaser from 'phaser';
+import { AudioManager } from '../systems/AudioManager';
+import { DialogueManager } from '../systems/DialogueManager';
 
 export class Player extends Phaser.GameObjects.Container {
   declare public body: Phaser.Physics.Arcade.Body;
-  
-  private avatar!: Phaser.GameObjects.Graphics;
-  private hat!: Phaser.GameObjects.Graphics;
-  private shadow!: Phaser.GameObjects.Graphics;
 
-  private speed = 180;
+  private sprite!: Phaser.GameObjects.Sprite;
+  private shadow!: Phaser.GameObjects.Graphics;
+  private lassoGraphics!: Phaser.GameObjects.Graphics;
+
+  private mountSprite: Phaser.GameObjects.Sprite | null = null;
+  private wingsLeft: Phaser.GameObjects.Graphics | null = null;
+  private wingsRight: Phaser.GameObjects.Graphics | null = null;
+
+  private maxSpeed = 180;
+  private velocityX = 0;
+  private velocityY = 0;
+
   private moveTarget: Phaser.Math.Vector2 | null = null;
-  private isMoving = false;
-  private bobTime = 0;
+
+  // Animation states
+  private playerState: 'idle' | 'walking' | 'casting' = 'idle';
+  private facingDirection: 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right' = 'down';
 
   // Input keys
   private keys: Record<string, Phaser.Input.Keyboard.Key> = {};
@@ -19,59 +29,23 @@ export class Player extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y);
 
-    // 1. Add shadow
     this.shadow = scene.add.graphics();
-    this.shadow.fillStyle(0x000000, 0.25);
-    this.shadow.fillEllipse(0, 16, 24, 8);
     this.add(this.shadow);
 
-    // 2. Draw procedural cute Keeper character
-    this.avatar = scene.add.graphics();
-    // Body (Cozy blue coat)
-    this.avatar.fillStyle(0x2a5c91, 1);
-    this.avatar.fillRoundedRect(-10, -12, 20, 24, 6);
-    this.avatar.lineStyle(1.5, 0x141f2a, 1);
-    this.avatar.strokeRoundedRect(-10, -12, 20, 24, 6);
-    
-    // Head/Face
-    this.avatar.fillStyle(0xffdcd0, 1);
-    this.avatar.fillCircle(0, -16, 9);
-    this.avatar.strokeCircle(0, -16, 9);
+    this.sprite = scene.add.sprite(0, -12, 'aztec_leader_idle'); // initial texture, animations override
+    this.sprite.setScale(0.9);
+    this.sprite.setOrigin(0.5, 0.5);
+    this.add(this.sprite);
 
-    // Eyes
-    this.avatar.fillStyle(0x141f2a, 1);
-    this.avatar.fillCircle(-3, -17, 1.5);
-    this.avatar.fillCircle(3, -17, 1.5);
+    this.lassoGraphics = scene.add.graphics();
+    this.add(this.lassoGraphics);
 
-    // Backpack (brown leather)
-    this.avatar.fillStyle(0x8a5200, 1);
-    this.avatar.fillRoundedRect(-13, -5, 6, 14, 2);
-    this.avatar.strokeRoundedRect(-13, -5, 6, 14, 2);
-
-    this.add(this.avatar);
-
-    // 3. Keeper Hat (procedural safari/tamer hat)
-    this.hat = scene.add.graphics();
-    this.hat.fillStyle(0xc19a6b, 1); // Straw/safari color
-    this.hat.fillEllipse(0, -22, 18, 5); // Brim
-    this.hat.fillRoundedRect(-6, -28, 12, 8, 2); // Crown
-    this.hat.lineStyle(1, 0x5c4832, 1);
-    this.hat.strokeEllipse(0, -22, 18, 5);
-    this.hat.strokeRoundedRect(-6, -28, 12, 8, 2);
-    
-    // Hat band (red)
-    this.hat.fillStyle(0xff5c8a, 1);
-    this.hat.fillRect(-6, -23, 12, 2);
-
-    this.add(this.hat);
-
-    // Enable arcade physics
     scene.physics.add.existing(this);
     this.body.setCollideWorldBounds(true);
-    this.body.setSize(24, 32);
-    this.body.setOffset(-12, -16);
+    // Narrow feet-only physical hitbox (16px width x 8px height, located at the bottom of the scaled sprite)
+    this.body.setSize(16, 8);
+    this.body.setOffset(-8, 10);
 
-    // Setup keyboard controls
     if (scene.input.keyboard) {
       this.keys = scene.input.keyboard.addKeys({
         up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -85,105 +59,256 @@ export class Player extends Phaser.GameObjects.Container {
       }) as any;
     }
 
-    // Tap-to-move listener
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      // Avoid tap to move if clicking UI elements or QTE minigame
-      if ((scene as any).isQteActive || pointer.y > scene.cameras.main.height - 85 || pointer.y < 85) {
+      if (DialogueManager.isDialogueActive() || (scene as any).isQteActive || pointer.y > scene.cameras.main.height - 85 || pointer.y < 85) {
         return;
       }
       this.setMoveTarget(pointer.x, pointer.y);
     });
+
+    this.drawShadow();
+  }
+
+  private drawShadow(): void {
+    this.shadow.clear();
+    this.shadow.fillStyle(0x000000, 0.25);
+    this.shadow.fillEllipse(0, 16, 24, 8);
+  }
+
+  private updateSpriteFrame(): void {
+    const skin = 'lana_leader';
+    const dir = this.facingDirection;
+
+    let animDir = 'down';
+    if (dir === 'up') animDir = 'up';
+    else if (dir === 'down') animDir = 'down';
+    else if (dir === 'left' || dir === 'up-left' || dir === 'down-left') animDir = 'left';
+    else if (dir === 'right' || dir === 'up-right' || dir === 'down-right') animDir = 'right';
+
+    let animKey = `${skin}_idle_${animDir}`;
+    if (this.playerState === 'walking') {
+      animKey = `${skin}_walk_${animDir}`;
+    }
+
+    if (this.sprite.anims) {
+      if (this.sprite.anims.currentAnim?.key !== animKey) {
+        this.sprite.play(animKey);
+      }
+    }
+    
+    this.sprite.setFlipX(false);
   }
 
   public setMoveTarget(x: number, y: number): void {
     this.moveTarget = new Phaser.Math.Vector2(x, y);
-    this.isMoving = true;
   }
 
   public stopMovement(): void {
     this.moveTarget = null;
-    this.isMoving = false;
+    this.velocityX = 0;
+    this.velocityY = 0;
     this.body.setVelocity(0, 0);
   }
 
+  public updateMountVisuals(creatureArea: string | null, isFlyable: boolean): void {
+    if (creatureArea) {
+      let spriteKey = 'creature_meadow';
+      if (creatureArea === 'whisper_forest') spriteKey = 'creature_forest';
+      else if (creatureArea === 'crystal_mountain') spriteKey = 'creature_mountain';
+      else if (creatureArea === 'golden_dunes') spriteKey = 'creature_dunes';
+      else if (creatureArea === 'sky_island') spriteKey = 'creature_sky';
+
+      if (!this.mountSprite) {
+        this.mountSprite = this.scene.add.sprite(0, 4, spriteKey);
+        this.mountSprite.setScale(1.25);
+        this.addAt(this.mountSprite, 1);
+      } else {
+        this.mountSprite.setTexture(spriteKey);
+      }
+      this.mountSprite.setVisible(true);
+      this.maxSpeed = isFlyable ? 340 : 260;
+      this.sprite.setVisible(false);
+    } else {
+      if (this.mountSprite) {
+        this.mountSprite.setVisible(false);
+      }
+      this.maxSpeed = 180;
+      this.sprite.setVisible(true);
+    }
+
+    if (isFlyable) {
+      if (!this.wingsLeft) {
+        this.wingsLeft = this.scene.add.graphics();
+        this.wingsLeft.fillStyle(0xffffff, 0.95);
+        this.wingsLeft.fillEllipse(0, 0, 24, 10);
+        this.wingsLeft.lineStyle(1.5, 0x141f2a, 1);
+        this.wingsLeft.strokeEllipse(0, 0, 24, 10);
+        this.wingsLeft.setAngle(-25);
+        this.addAt(this.wingsLeft, 1);
+      }
+      this.wingsLeft.setVisible(true);
+
+      if (!this.wingsRight) {
+        this.wingsRight = this.scene.add.graphics();
+        this.wingsRight.fillStyle(0xffffff, 0.95);
+        this.wingsRight.fillEllipse(0, 0, 24, 10);
+        this.wingsRight.lineStyle(1.5, 0x141f2a, 1);
+        this.wingsRight.strokeEllipse(0, 0, 24, 10);
+        this.wingsRight.setAngle(25);
+        this.addAt(this.wingsRight, 1);
+      }
+      this.wingsRight.setVisible(true);
+    } else {
+      if (this.wingsLeft) this.wingsLeft.setVisible(false);
+      if (this.wingsRight) this.wingsRight.setVisible(false);
+    }
+  }
+
+  public playCastAnimation(targetX: number, targetY: number, onComplete: () => void): void {
+    this.playerState = 'casting';
+    this.body.setVelocity(0, 0);
+
+    const angle = Phaser.Math.Angle.Between(this.x, this.y, targetX, targetY);
+    const deg = Phaser.Math.RadToDeg(angle);
+    if (deg > -45 && deg <= 45) this.facingDirection = 'right';
+    else if (deg > 45 && deg <= 135) this.facingDirection = 'down';
+    else if (deg > -135 && deg <= -45) this.facingDirection = 'up';
+    else this.facingDirection = 'left';
+    this.updateSpriteFrame();
+
+    AudioManager.playSfx('rope_throw');
+
+    this.scene.time.delayedCall(600, () => {
+      onComplete();
+    });
+
+    this.scene.time.delayedCall(1600, () => {
+      if (this.playerState === 'casting') {
+        this.playerState = 'idle';
+      }
+    });
+  }
+
   update(_time: number, delta: number): void {
-    let vx = 0;
-    let vy = 0;
-
-    // Check keyboard inputs
-    if (this.keys.left?.isDown || this.keys.leftArrow?.isDown) {
-      vx = -this.speed;
-      this.moveTarget = null; // Keyboard overrides tap-to-move
-    } else if (this.keys.right?.isDown || this.keys.rightArrow?.isDown) {
-      vx = this.speed;
-      this.moveTarget = null;
+    if (DialogueManager.isDialogueActive()) {
+      this.body.setVelocity(0, 0);
+      this.playerState = 'idle';
+      return;
     }
 
-    if (this.keys.up?.isDown || this.keys.upArrow?.isDown) {
-      vy = -this.speed;
-      this.moveTarget = null;
-    } else if (this.keys.down?.isDown || this.keys.downArrow?.isDown) {
-      vy = this.speed;
-      this.moveTarget = null;
+    const dt = delta / 1000;
+    let inputX = 0;
+    let inputY = 0;
+
+    if (this.playerState !== 'casting') {
+      if (this.keys.left?.isDown || this.keys.leftArrow?.isDown) {
+        inputX = -1;
+        this.moveTarget = null;
+      } else if (this.keys.right?.isDown || this.keys.rightArrow?.isDown) {
+        inputX = 1;
+        this.moveTarget = null;
+      }
+
+      if (this.keys.up?.isDown || this.keys.upArrow?.isDown) {
+        inputY = -1;
+        this.moveTarget = null;
+      } else if (this.keys.down?.isDown || this.keys.downArrow?.isDown) {
+        inputY = 1;
+        this.moveTarget = null;
+      }
     }
 
-    // Process Keyboard Velocity
-    if (vx !== 0 || vy !== 0) {
-      this.isMoving = true;
-      
-      // Normalize speed diagonal
-      if (vx !== 0 && vy !== 0) {
-        vx *= 0.7071;
-        vy *= 0.7071;
-      }
-      this.body.setVelocity(vx, vy);
+    let targetVx = 0;
+    let targetVy = 0;
 
-      // Flip character sprite left/right
-      if (vx < 0) {
-        this.avatar.setScale(-1, 1);
-        this.hat.setScale(-1, 1);
-      } else if (vx > 0) {
-        this.avatar.setScale(1, 1);
-        this.hat.setScale(1, 1);
+    if (inputX !== 0 || inputY !== 0) {
+      if (inputX !== 0 && inputY !== 0) {
+        inputX *= 0.7071;
+        inputY *= 0.7071;
       }
-    } else if (this.moveTarget) {
-      // Process Tap-to-move target
+      targetVx = inputX * this.maxSpeed;
+      targetVy = inputY * this.maxSpeed;
+
+      if (inputY < 0) {
+        this.facingDirection = inputX < 0 ? 'up-left' : inputX > 0 ? 'up-right' : 'up';
+      } else if (inputY > 0) {
+        this.facingDirection = inputX < 0 ? 'down-left' : inputX > 0 ? 'down-right' : 'down';
+      } else {
+        this.facingDirection = inputX < 0 ? 'left' : 'right';
+      }
+      this.playerState = 'walking';
+    } else if (this.moveTarget && this.playerState !== 'casting') {
       const dist = Phaser.Math.Distance.Between(this.x, this.y, this.moveTarget.x, this.moveTarget.y);
-      if (dist < 10) {
+      if (dist < 8) {
         this.stopMovement();
+        this.playerState = 'idle';
       } else {
         const angle = Phaser.Math.Angle.Between(this.x, this.y, this.moveTarget.x, this.moveTarget.y);
-        vx = Math.cos(angle) * this.speed;
-        vy = Math.sin(angle) * this.speed;
-        this.body.setVelocity(vx, vy);
-
-        if (vx < 0) {
-          this.avatar.setScale(-1, 1);
-          this.hat.setScale(-1, 1);
-        } else {
-          this.avatar.setScale(1, 1);
-          this.hat.setScale(1, 1);
+        
+        // Dynamic smooth braking when close to destination to prevent overshooting
+        let speed = this.maxSpeed;
+        if (dist < 32) {
+          speed = this.maxSpeed * (dist / 32);
         }
+        
+        targetVx = Math.cos(angle) * speed;
+        targetVy = Math.sin(angle) * speed;
+
+        if (Math.abs(targetVx) > Math.abs(targetVy)) {
+          this.facingDirection = targetVx < 0 ? 'left' : 'right';
+        } else {
+          this.facingDirection = targetVy < 0 ? 'up' : 'down';
+        }
+        this.playerState = 'walking';
       }
     } else {
-      this.isMoving = false;
-      this.body.setVelocity(0, 0);
+      if (this.playerState !== 'casting') {
+        this.playerState = 'idle';
+      }
     }
 
-    // Walking Bobbing Animation
-    if (this.isMoving) {
-      this.bobTime += delta * 0.012;
-      const bobY = Math.sin(this.bobTime) * 3;
-      // bob Y position of body elements
-      this.avatar.y = bobY;
-      this.hat.y = bobY;
-      // Squeeze shadow based on bob Y
-      this.shadow.setScale(1 + Math.sin(this.bobTime) * 0.1, 1);
+    // Apply snappy momentum (0.1s acceleration to feel responsive, 0.12s deceleration to stop cleanly)
+    const accelRate = this.maxSpeed / 0.10;
+    const decelRate = this.maxSpeed / 0.12;
+
+    // X Velocity update
+    if (targetVx !== 0) {
+      if (Math.abs(this.velocityX - targetVx) < accelRate * dt) {
+        this.velocityX = targetVx;
+      } else {
+        this.velocityX += Math.sign(targetVx - this.velocityX) * accelRate * dt;
+      }
     } else {
-      this.avatar.y = 0;
-      this.hat.y = 0;
-      this.shadow.setScale(1, 1);
-      this.bobTime = 0;
+      if (Math.abs(this.velocityX) < decelRate * dt) {
+        this.velocityX = 0;
+      } else {
+        this.velocityX -= Math.sign(this.velocityX) * decelRate * dt;
+      }
     }
+
+    // Y Velocity update
+    if (targetVy !== 0) {
+      if (Math.abs(this.velocityY - targetVy) < accelRate * dt) {
+        this.velocityY = targetVy;
+      } else {
+        this.velocityY += Math.sign(targetVy - this.velocityY) * accelRate * dt;
+      }
+    } else {
+      if (Math.abs(this.velocityY) < decelRate * dt) {
+        this.velocityY = 0;
+      } else {
+        this.velocityY -= Math.sign(this.velocityY) * decelRate * dt;
+      }
+    }
+
+    this.body.setVelocity(this.velocityX, this.velocityY);
+
+    if (this.mountSprite && this.mountSprite.visible) {
+      const isLeft = this.facingDirection === 'left' || this.facingDirection === 'up-left' || this.facingDirection === 'down-left';
+      this.mountSprite.setScale(isLeft ? -1.25 : 1.25, 1.25);
+    }
+
+    this.updateSpriteFrame();
+    this.setDepth(this.y);
   }
 }

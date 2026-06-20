@@ -32,11 +32,11 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y);
 
-    const width = 620;
-    const height = 460;
+    const width = 820;
+    const height = 620;
 
     // Main Panel Background
-    this.panelBg = scene.add.nineslice(0, 0, 'panel_frame', 0, width, height, 16, 16, 16, 16);
+    this.panelBg = scene.add.nineslice(0, 0, 'modal_window', 0, width, height, 32, 32, 32, 32);
     this.add(this.panelBg);
 
     // Title
@@ -46,13 +46,23 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
       fontStyle: 'bold',
       color: '#5c4832'
     }).setOrigin(0.5);
+    title.setVisible(false);
     this.add(title);
 
     // Close Button
-    const closeBtn = scene.add.text(width / 2 - 30, -height / 2 + 25, '❌', {
-      fontFamily: 'Inter, sans-serif',
-      fontSize: '18px'
+    const closeBtn = scene.add.text(width / 2 - 14, -height / 2 + 16, '✕', {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: '#5c4832'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerover', () => {
+      closeBtn.setColor('#8f6f4a');
+      AudioManager.playSfx('button_hover');
+    });
+    closeBtn.on('pointerout', () => {
+      closeBtn.setColor('#5c4832');
+    });
     closeBtn.on('pointerdown', () => {
       AudioManager.playSfx('ui_tap');
       this.closePanel();
@@ -70,7 +80,7 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
 
     // 1. Parent A Slot (Left)
     const slotX = 120;
-    this.parentASlot = scene.add.nineslice(-slotX, -40, 'button', 0, 120, 120, 8, 8, 8, 8);
+    this.parentASlot = scene.add.nineslice(-slotX, -40, 'button', 0, 120, 120, 18, 18, 12, 12);
     this.parentASlot.setInteractive({ useHandCursor: true });
     this.parentASlot.on('pointerdown', () => this.openSelector('A'));
     this.add(this.parentASlot);
@@ -95,7 +105,7 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
     this.add(heart);
 
     // 2. Parent B Slot (Right)
-    this.parentBSlot = scene.add.nineslice(slotX, -40, 'button', 0, 120, 120, 8, 8, 8, 8);
+    this.parentBSlot = scene.add.nineslice(slotX, -40, 'button', 0, 120, 120, 18, 18, 12, 12);
     this.parentBSlot.setInteractive({ useHandCursor: true });
     this.parentBSlot.on('pointerdown', () => this.openSelector('B'));
     this.add(this.parentBSlot);
@@ -125,14 +135,10 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
 
     // 4. Breed Button
     this.breedBtnContainer = scene.add.container(0, 120);
-    const breedBg = scene.add.nineslice(0, 0, 'button', 0, 220, 42, 8, 8, 8, 8);
+    const breedBg = scene.add.nineslice(0, 0, 'button', 0, 220, 42, 18, 18, 12, 12);
     breedBg.setInteractive({ useHandCursor: true });
-    breedBg.on('pointerdown', () => this.attemptBreed());
 
-    breedBg.on('pointerover', () => this.breedBtnContainer.setScale(1.03));
-    breedBg.on('pointerout', () => this.breedBtnContainer.setScale(1.0));
-
-    this.breedBtnText = scene.add.text(0, 0, 'Start Fusion', {
+    this.breedBtnText = scene.add.text(0, -2, 'Start Fusion', {
       fontFamily: 'Outfit, sans-serif',
       fontSize: '14px',
       fontStyle: 'bold',
@@ -142,11 +148,36 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
     this.breedBtnContainer.add([breedBg, this.breedBtnText]);
     this.add(this.breedBtnContainer);
 
+    breedBg.on('pointerover', () => {
+      breedBg.setTexture('button_hover');
+      this.scene.tweens.add({ targets: this.breedBtnContainer, scale: 1.05, duration: 80 });
+      AudioManager.playSfx('button_hover');
+    });
+    breedBg.on('pointerout', () => {
+      breedBg.setTexture('button');
+      breedBg.y = 0;
+      this.breedBtnText.y = -2;
+      this.scene.tweens.add({ targets: this.breedBtnContainer, scale: 1.0, duration: 80 });
+    });
+    breedBg.on('pointerdown', () => {
+      breedBg.setTexture('button_click');
+      breedBg.y = 2; // Y translation downwards by 2px
+      this.breedBtnText.y = 0;
+      this.scene.tweens.add({ targets: this.breedBtnContainer, scale: 0.95, duration: 40 });
+    });
+    breedBg.on('pointerup', () => {
+      breedBg.setTexture('button_hover');
+      breedBg.y = 0;
+      this.breedBtnText.y = -2;
+      this.scene.tweens.add({ targets: this.breedBtnContainer, scale: 1.05, duration: 40 });
+      this.attemptBreed();
+    });
+
     this.updateBreedButtonState();
 
     // 5. Select Sub Panel (grid modal for choosing parents)
     this.selectSubPanel = scene.add.container(0, 0);
-    this.subPanelBg = scene.add.nineslice(0, 0, 'panel_frame', 0, 440, 360, 12, 12, 12, 12);
+    this.subPanelBg = scene.add.nineslice(0, 0, 'modal_window', 0, 440, 360, 32, 32, 32, 32);
     this.subPanelBg.setTint(0xfff7e6);
     this.selectSubPanel.add(this.subPanelBg);
 
@@ -157,12 +188,20 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
       color: '#5c4832'
     }).setOrigin(0.5);
 
-    const subClose = scene.add.text(440 / 2 - 25, -150, '❌', {
-      fontFamily: 'Inter, sans-serif',
-      fontSize: '14px'
+    const subClose = scene.add.text(440 / 2 - 14, -146, '✕', {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#5c4832'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    subClose.on('pointerover', () => {
+      subClose.setColor('#8f6f4a');
+      AudioManager.playSfx('button_hover');
+    });
+    subClose.on('pointerout', () => {
+      subClose.setColor('#5c4832');
+    });
     subClose.on('pointerdown', () => {
-      AudioManager.playSfx('ui_tap');
       this.selectSubPanel.setVisible(false);
     });
 
@@ -246,7 +285,7 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
 
       const item = this.scene.add.container(x, y);
 
-      const card = this.scene.add.nineslice(0, 0, 'button', 0, 80, 75, 6, 6, 6, 6);
+      const card = this.scene.add.nineslice(0, 0, 'button', 0, 80, 75, 18, 18, 12, 12);
       card.setInteractive({ useHandCursor: true });
       item.add(card);
 
@@ -337,9 +376,11 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
   }
 
   private updateBreedButtonState(): void {
+    const breedBg = this.breedBtnContainer.list[0] as Phaser.GameObjects.NineSlice;
     if (this.selectedParentAIdx === null || this.selectedParentBIdx === null) {
       this.breedBtnContainer.setAlpha(0.5);
       this.breedBtnText.setText('Select Parents');
+      breedBg?.disableInteractive();
       return;
     }
 
@@ -353,9 +394,11 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
     if (state.coins < cost) {
       this.breedBtnContainer.setAlpha(0.5);
       this.breedBtnText.setText(`Short 🪙 ${cost - state.coins}`);
+      breedBg?.disableInteractive();
     } else {
       this.breedBtnContainer.setAlpha(1.0);
       this.breedBtnText.setText(`☘️ Fuse Pets (🪙 ${cost})`);
+      breedBg?.setInteractive({ useHandCursor: true });
     }
   }
 
@@ -431,7 +474,7 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
     const modal = this.scene.add.container(width / 2, height / 2);
     modal.setDepth(210);
 
-    const bg = this.scene.add.nineslice(0, 0, 'panel_frame', 0, 380, 280, 16, 16, 16, 16);
+    const bg = this.scene.add.nineslice(0, 0, 'modal_window', 0, 380, 280, 32, 32, 32, 32);
     modal.add(bg);
 
     const titleStr = success ? 'SUCCESSFUL FUSION!' : 'FUSION MISFIRE!';
@@ -478,7 +521,7 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
     // Track collection book check
     AchievementSystem.checkAchievements();
 
-    const claimBtn = this.scene.add.nineslice(0, 95, 'button', 0, 160, 36, 8, 8, 8, 8);
+    const claimBtn = this.scene.add.nineslice(0, 95, 'button', 0, 160, 36, 18, 18, 12, 12);
     claimBtn.setInteractive({ useHandCursor: true });
     claimBtn.on('pointerdown', () => {
       AudioManager.playSfx('ui_confirm');

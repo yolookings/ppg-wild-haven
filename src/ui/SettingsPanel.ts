@@ -11,11 +11,11 @@ export class SettingsPanel extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y);
 
-    const width = 500;
-    const height = 480;
+    const width = 700;
+    const height = 600;
 
     // Background Panel
-    this.panelBg = scene.add.nineslice(0, 0, 'panel_frame', 0, width, height, 16, 16, 16, 16);
+    this.panelBg = scene.add.nineslice(0, 0, 'modal_window', 0, width, height, 32, 32, 32, 32);
     this.add(this.panelBg);
 
     // Title
@@ -25,13 +25,23 @@ export class SettingsPanel extends Phaser.GameObjects.Container {
       fontStyle: 'bold',
       color: '#5c4832'
     }).setOrigin(0.5);
+    title.setVisible(false);
     this.add(title);
 
     // Close Button
-    const closeBtn = scene.add.text(width / 2 - 30, -height / 2 + 30, '❌', {
-      fontFamily: 'Inter, sans-serif',
-      fontSize: '18px'
+    const closeBtn = scene.add.text(width / 2 - 14, -height / 2 + 16, '✕', {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: '#5c4832'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerover', () => {
+      closeBtn.setColor('#8f6f4a');
+      AudioManager.playSfx('button_hover');
+    });
+    closeBtn.on('pointerout', () => {
+      closeBtn.setColor('#5c4832');
+    });
     closeBtn.on('pointerdown', () => {
       AudioManager.playSfx('ui_tap');
       this.setVisible(false);
@@ -178,10 +188,10 @@ export class SettingsPanel extends Phaser.GameObjects.Container {
   private createActionButton(x: number, y: number, text: string, callback: () => void, color = '#5c4832'): void {
     const container = this.scene.add.container(x, y);
 
-    const bg = this.scene.add.nineslice(0, 0, 'button', 0, 190, 38, 8, 8, 8, 8);
+    const bg = this.scene.add.nineslice(0, 0, 'button', 0, 190, 38, 18, 18, 12, 12);
     bg.setInteractive({ useHandCursor: true });
     
-    const txt = this.scene.add.text(0, 0, text, {
+    const txt = this.scene.add.text(0, -2, text, {
       fontFamily: 'Outfit, sans-serif',
       fontSize: '14px',
       fontStyle: 'bold',
@@ -189,10 +199,50 @@ export class SettingsPanel extends Phaser.GameObjects.Container {
     }).setOrigin(0.5);
 
     container.add([bg, txt]);
-    bg.on('pointerdown', callback);
 
-    bg.on('pointerover', () => container.setScale(1.03));
-    bg.on('pointerout', () => container.setScale(1.0));
+    bg.on('pointerover', () => {
+      bg.setTexture('button_hover');
+      this.scene.tweens.add({
+        targets: container,
+        scale: 1.05,
+        duration: 80
+      });
+      AudioManager.playSfx('button_hover');
+    });
+
+    bg.on('pointerout', () => {
+      bg.setTexture('button');
+      bg.y = 0;
+      txt.y = -2;
+      this.scene.tweens.add({
+        targets: container,
+        scale: 1.0,
+        duration: 80
+      });
+    });
+
+    bg.on('pointerdown', () => {
+      bg.setTexture('button_click');
+      bg.y = 2; // Y translation downwards by 2px
+      txt.y = 0;
+      this.scene.tweens.add({
+        targets: container,
+        scale: 0.95, // 0.95x scale reduction
+        duration: 40
+      });
+    });
+
+    bg.on('pointerup', () => {
+      bg.setTexture('button_hover');
+      bg.y = 0;
+      txt.y = -2;
+      this.scene.tweens.add({
+        targets: container,
+        scale: 1.05,
+        duration: 40
+      });
+      callback();
+    });
 
     this.add(container);
   }

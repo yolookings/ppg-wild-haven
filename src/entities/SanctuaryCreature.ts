@@ -6,6 +6,7 @@ import { EconomySystem } from '../systems/EconomySystem';
 import { AudioManager } from '../systems/AudioManager';
 import { EventBus } from '../systems/EventBus';
 import { SaveSystem } from '../systems/SaveSystem';
+import { CreatureVisuals } from '../utils/CreatureVisuals';
 
 export class SanctuaryCreature extends Phaser.GameObjects.Container {
   public ownedData: OwnedCreature;
@@ -15,31 +16,56 @@ export class SanctuaryCreature extends Phaser.GameObjects.Container {
   private shadow!: Phaser.GameObjects.Graphics;
   private nameTagBg!: Phaser.GameObjects.Graphics;
   private nameTagText!: Phaser.GameObjects.Text;
+  private baseScale: number;
   
   private coinTimer!: Phaser.Time.TimerEvent;
+  private hopTimer!: Phaser.Time.TimerEvent;
   private onClickCallback: (c: SanctuaryCreature) => void;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, ownedData: OwnedCreature, onClick: (c: SanctuaryCreature) => void) {
+  private homeX: number;
+  private homeY: number;
+  private bounds?: { minX: number; maxX: number; minY: number; maxY: number };
+
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    ownedData: OwnedCreature,
+    onClick: (c: SanctuaryCreature) => void,
+    bounds?: { minX: number; maxX: number; minY: number; maxY: number }
+  ) {
     super(scene, x, y);
     this.ownedData = ownedData;
     this.onClickCallback = onClick;
+    this.bounds = bounds;
     this.creatureData = DataLoader.getCreature(ownedData.creatureId)!;
 
-    // 1. Shadow underneath
+    this.homeX = x;
+    this.homeY = y;
+
+    // 1. Sprite matching using subspecies variation system
+    const visuals = CreatureVisuals.getVisuals(this.creatureData);
+    this.baseScale = 1.4 * visuals.scaleMult * (1 + (this.ownedData.level - 1) * 0.05);
+
+    // 2. Shadow underneath scaled to size
     this.shadow = scene.add.graphics();
     this.shadow.fillStyle(0x000000, 0.15);
-    this.shadow.fillEllipse(0, 8, 14, 4);
+    const shadowW = 12 * this.baseScale;
+    const shadowH = 4 * this.baseScale;
+    this.shadow.fillEllipse(0, 10, shadowW, shadowH);
     this.add(this.shadow);
 
-    // 2. Sprite matching fallback
-    let spriteKey = 'creature_meadow';
-    if (this.creatureData.area === 'whisper_forest') spriteKey = 'creature_forest';
-    else if (this.creatureData.area === 'crystal_mountain') spriteKey = 'creature_mountain';
-    else if (this.creatureData.area === 'golden_dunes') spriteKey = 'creature_dunes';
-    else if (this.creatureData.area === 'sky_island') spriteKey = 'creature_sky';
+    if (!scene.textures.exists(visuals.spriteKey)) {
+      this.setVisible(false);
+      this.sprite = scene.add.sprite(0, 0, 'creature_slime');
+      this.sprite.setVisible(false);
+      this.add(this.sprite);
+      return;
+    }
 
-    this.sprite = scene.add.sprite(0, 0, spriteKey);
-    this.sprite.setScale(0.65); // Smaller size!
+    this.sprite = scene.add.sprite(0, 0, visuals.spriteKey);
+    this.sprite.setTint(visuals.tint);
+    this.sprite.setScale(this.baseScale);
     this.sprite.setOrigin(0.5, 0.5);
     this.sprite.setInteractive({ useHandCursor: true });
     this.add(this.sprite);
@@ -72,20 +98,51 @@ export class SanctuaryCreature extends Phaser.GameObjects.Container {
 
     this.nameTagText.setDepth(1);
 
-    // 4. Idle Squash/Stretch
-    scene.tweens.add({
-      targets: this.sprite,
-      scaleY: 0.65 * 1.1,
-      scaleX: 0.65 * 1.25,
-      y: 1,
-      duration: 1200 + Math.random() * 600,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
+    // 4. Update scale when leveled up
+    EventBus.on('creatureLeveledUp', (data: { instanceId: string }) => {
+      if (!this.scene) return; // Prevent updating destroyed creatures
+      if (this.ownedData.instanceId === data.instanceId) {
+        const state = SaveSystem.getState();
+        const updatedData = state.ownedCreatures.find((c: OwnedCreature) => c.instanceId === data.instanceId);
+        if (updatedData) {
+          this.ownedData = updatedData;
+          this.baseScale = 1.4 * visuals.scaleMult * (1 + (this.ownedData.level - 1) * 0.05);
+          this.sprite.setScale(this.baseScale);
+          
+          const newDispName = this.ownedData.nickname || this.creatureData.name;
+          this.nameTagText.setText(`${newDispName} Lvl.${this.ownedData.level}`);
+          
+          const newTxtW = this.nameTagText.width;
+          this.nameTagBg.clear();
+          this.nameTagBg.fillStyle(0xfff7e6, 0.85);
+          this.nameTagBg.lineStyle(1, 0xd1b48c, 0.9);
+          this.nameTagBg.fillRoundedRect(-newTxtW / 2 - 4, -25, newTxtW + 8, 10, 2);
+          this.nameTagBg.strokeRoundedRect(-newTxtW / 2 - 4, -25, newTxtW + 8, 10, 2);
+        }
+      }
     });
+
+    // 4. Idle Squash/Stretch or play Phaser animation
+    if (visuals.isAnimated) {
+      this.sprite.play(`animal_${visuals.animalType}_idle_down`);
+    } else {
+      scene.tweens.add({
+        targets: this.sprite,
+        scaleY: this.baseScale * 1.1,
+        scaleX: this.baseScale * 1.25,
+        y: 1,
+        duration: 1200 + Math.random() * 600,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
 
     // 5. Setup periodic coin ticking
     this.startCoinProduction();
+
+    // 6. Setup dynamic slot-local hopping
+    this.startHopping();
   }
 
   public updateData(newOwnedData: OwnedCreature): void {
@@ -118,6 +175,115 @@ export class SanctuaryCreature extends Phaser.GameObjects.Container {
     });
   }
 
+  private startHopping(): void {
+    this.hopTimer = this.scene.time.addEvent({
+      delay: 4000 + Math.random() * 6000,
+      callback: () => this.hopAroundSlot(),
+      loop: true
+    });
+  }
+
+  private hopAroundSlot(): void {
+    if (!this.scene) return;
+
+    const visuals = CreatureVisuals.getVisuals(this.creatureData);
+
+    // Hop range: within a small radius of 20px around slot coordinate
+    // Hop range: wider for enclosures, smaller for slots
+    const angle = Math.random() * Math.PI * 2;
+    const dist = this.bounds ? 15 + Math.random() * 30 : 8 + Math.random() * 12;
+    const targetX = this.homeX + Math.cos(angle) * dist;
+    const targetY = this.homeY + Math.sin(angle) * dist;
+
+    // Keep within boundaries
+    let clampedX = targetX;
+    let clampedY = targetY;
+
+    if (this.bounds) {
+      clampedX = Math.max(this.bounds.minX, Math.min(this.bounds.maxX, targetX));
+      clampedY = Math.max(this.bounds.minY, Math.min(this.bounds.maxY, targetY));
+      
+      // Update homeX, homeY to the new position occasionally so they drift naturally around the pen
+      if (Math.random() < 0.4) {
+        this.homeX = clampedX;
+        this.homeY = clampedY;
+      }
+    } else {
+      clampedX = Math.max(50, Math.min(this.scene.cameras.main.width - 50, targetX));
+      clampedY = Math.max(135, Math.min(this.scene.cameras.main.height - 40, targetY));
+    }
+
+    const duration = 400;
+
+    const dx = clampedX - this.x;
+    const dy = clampedY - this.y;
+    let hopDir = 'down';
+    if (Math.abs(dx) > Math.abs(dy)) {
+      hopDir = dx < 0 ? 'left' : 'right';
+    } else {
+      hopDir = dy < 0 ? 'up' : 'down';
+    }
+
+    if (visuals.isAnimated) {
+      this.sprite.play(`animal_${visuals.animalType}_walk_${hopDir}`);
+    }
+
+    this.scene.tweens.add({
+      targets: this,
+      x: clampedX,
+      y: clampedY,
+      duration: duration,
+      ease: 'Linear'
+    });
+
+    if (visuals.isAnimated) {
+      this.scene.tweens.add({
+        targets: this.sprite,
+        y: -10,
+        duration: duration / 2,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+        onComplete: () => {
+          this.sprite.y = 0;
+          this.sprite.play(`animal_${visuals.animalType}_idle_${hopDir}`);
+        }
+      });
+    } else {
+      this.scene.tweens.add({
+        targets: this.sprite,
+        y: -10,
+        scaleY: this.baseScale * 1.3,
+        scaleX: this.baseScale * 0.95,
+        duration: duration / 2,
+        yoyo: true,
+        ease: 'Quad.easeOut',
+        onComplete: () => {
+          this.scene.tweens.add({
+            targets: this.sprite,
+            scaleY: this.baseScale * 0.9,
+            scaleX: this.baseScale * 1.2,
+            y: 2,
+            duration: 80,
+            yoyo: true,
+            onComplete: () => {
+              this.sprite.y = 0;
+              this.sprite.setScale(this.baseScale);
+            }
+          });
+        }
+      });
+    }
+
+    this.scene.tweens.add({
+      targets: this.shadow,
+      scale: 0.6,
+      alpha: 0.05,
+      duration: duration / 2,
+      yoyo: true,
+      ease: 'Quad.easeOut'
+    });
+  }
+
   private produceCoins(): void {
     if (!this.scene) return;
 
@@ -144,37 +310,31 @@ export class SanctuaryCreature extends Phaser.GameObjects.Container {
 
     AudioManager.playSfx('coin_tick');
 
-    const popContainer = this.scene.add.container(this.x, this.y - 12);
-    
-    const coinImg = this.scene.add.image(-12, 0, 'coin').setScale(0.9);
-    const textStr = `+${amount}`;
-    const txt = this.scene.add.text(4, 0, textStr, {
+    const txt = this.scene.add.text(this.x, this.y - 15, `+${amount}`, {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '11px',
+      fontSize: '8.5px',
       fontStyle: 'bold',
-      color: '#8a5200'
-    }).setOrigin(0, 0.5);
-
-    popContainer.add([coinImg, txt]);
-    popContainer.setDepth(10);
-    this.scene.add.existing(popContainer);
-
+      color: '#d4af37', // shiny gold color
+      stroke: '#2c1e15',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+    
+    txt.setDepth(this.y + 100);
     this.scene.tweens.add({
-      targets: popContainer,
-      y: popContainer.y - 45,
+      targets: txt,
+      y: txt.y - 30,
       alpha: 0,
-      scale: 1.1,
-      duration: 1000,
+      duration: 1200,
       ease: 'Cubic.easeOut',
-      onComplete: () => popContainer.destroy()
+      onComplete: () => txt.destroy()
     });
 
     // Bounce the creature sprite briefly on cash out
     this.scene.tweens.add({
       targets: this.sprite,
-      scaleY: 0.65 * 1.3,
-      scaleX: 0.65 * 0.9,
-      y: -5,
+      scaleY: this.baseScale * 1.25,
+      scaleX: this.baseScale * 0.92,
+      y: -4,
       duration: 120,
       yoyo: true,
       ease: 'Quad.easeOut'
@@ -184,6 +344,9 @@ export class SanctuaryCreature extends Phaser.GameObjects.Container {
   public destroy(): void {
     if (this.coinTimer) {
       this.coinTimer.destroy();
+    }
+    if (this.hopTimer) {
+      this.hopTimer.destroy();
     }
     super.destroy();
   }

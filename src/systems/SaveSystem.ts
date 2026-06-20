@@ -31,6 +31,8 @@ export class SaveSystem {
       achievementProgress: {},
       sanctuaryLevel: 1,
       sanctuaryDecorSlots: 4, // 4 slots to start
+      tetheredCreatureId: null,
+      tutorialStep: 0,
       lastSavedAt: now,
       lastOnlineAt: now,
       dailyStreak: 0,

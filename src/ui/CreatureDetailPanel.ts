@@ -6,6 +6,7 @@ import { EconomySystem } from '../systems/EconomySystem';
 import { SaveSystem } from '../systems/SaveSystem';
 import { AudioManager } from '../systems/AudioManager';
 import { EventBus } from '../systems/EventBus';
+import { CreatureVisuals } from '../utils/CreatureVisuals';
 
 export class CreatureDetailPanel extends Phaser.GameObjects.Container {
   private panelBg!: Phaser.GameObjects.NineSlice;
@@ -19,24 +20,38 @@ export class CreatureDetailPanel extends Phaser.GameObjects.Container {
   private feedBtnText!: Phaser.GameObjects.Text;
   private renameBtnText!: Phaser.GameObjects.Text;
 
+  private mountBtnContainer!: Phaser.GameObjects.Container;
+  private mountBtnText!: Phaser.GameObjects.Text;
+
+
   private currentOwned: OwnedCreature | null = null;
   private currentCreature: Creature | null = null;
+  private baseScale = 1.6;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y);
 
-    const width = 460;
-    const height = 450;
+    const width = 660;
+    const height = 600;
 
     // Background
-    this.panelBg = scene.add.nineslice(0, 0, 'panel_frame', 0, width, height, 16, 16, 16, 16);
+    this.panelBg = scene.add.nineslice(0, 0, 'modal_window', 0, width, height, 32, 32, 32, 32);
     this.add(this.panelBg);
 
     // Close Button
-    const closeBtn = scene.add.text(width / 2 - 30, -height / 2 + 30, '❌', {
-      fontFamily: 'Inter, sans-serif',
-      fontSize: '18px'
+    const closeBtn = scene.add.text(width / 2 - 14, -height / 2 + 16, '✕', {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: '#5c4832'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerover', () => {
+      closeBtn.setColor('#8f6f4a');
+      AudioManager.playSfx('button_hover');
+    });
+    closeBtn.on('pointerout', () => {
+      closeBtn.setColor('#5c4832');
+    });
     closeBtn.on('pointerdown', () => {
       AudioManager.playSfx('ui_tap');
       this.setVisible(false);
@@ -66,8 +81,26 @@ export class CreatureDetailPanel extends Phaser.GameObjects.Container {
       fontStyle: 'normal',
       color: '#8c765c'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.renameBtnText.on('pointerdown', () => this.promptRename());
     this.add(this.renameBtnText);
+
+    this.renameBtnText.on('pointerover', () => {
+      scene.tweens.add({ targets: this.renameBtnText, scale: 1.05, duration: 80 });
+      AudioManager.playSfx('button_hover');
+    });
+    this.renameBtnText.on('pointerout', () => {
+      this.renameBtnText.y = 5;
+      scene.tweens.add({ targets: this.renameBtnText, scale: 1.0, duration: 80 });
+    });
+    this.renameBtnText.on('pointerdown', () => {
+      this.renameBtnText.y = 7;
+      scene.tweens.add({ targets: this.renameBtnText, scale: 0.95, duration: 40 });
+    });
+    this.renameBtnText.on('pointerup', () => {
+      this.renameBtnText.y = 5;
+      scene.tweens.add({ targets: this.renameBtnText, scale: 1.05, duration: 40 });
+      AudioManager.playSfx('ui_tap');
+      this.promptRename();
+    });
 
     // Rarity Badge
     this.rarityBadge = scene.add.text(0, 30, 'Common', {
@@ -91,35 +124,99 @@ export class CreatureDetailPanel extends Phaser.GameObjects.Container {
     this.add(this.descText);
 
     // 4. Stats: Coin Generation and Level
-    this.statsText = scene.add.text(0, 145, 'Level 1 • Passive Income: 1 coin / 10s', {
+    this.statsText = scene.add.text(0, 130, 'Level 1 • Passive Income: 1 coin / 10s', {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '15px',
+      fontSize: '13px',
       fontStyle: 'bold',
       color: '#5c4832',
       stroke: '#fff7e6',
-      strokeThickness: 2
+      strokeThickness: 2,
+      align: 'center'
     }).setOrigin(0.5);
     this.add(this.statsText);
 
     // 5. Feed / Train Level Up Button
-    this.feedBtnContainer = scene.add.container(0, 195);
+    this.feedBtnContainer = scene.add.container(0, 175);
     
-    const feedBg = scene.add.nineslice(0, 0, 'button', 0, 240, 42, 8, 8, 8, 8);
+    const feedBg = scene.add.nineslice(0, 0, 'button', 0, 240, 36, 18, 18, 12, 12);
     feedBg.setInteractive({ useHandCursor: true });
-    feedBg.on('pointerdown', () => this.feedCreature());
 
-    feedBg.on('pointerover', () => this.feedBtnContainer.setScale(1.03));
-    feedBg.on('pointerout', () => this.feedBtnContainer.setScale(1.0));
-
-    this.feedBtnText = scene.add.text(0, 0, '☘️ Feed (100 Coins)', {
+    this.feedBtnText = scene.add.text(0, -2, '☘️ Feed (100 Coins)', {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '14px',
+      fontSize: '13px',
       fontStyle: 'bold',
       color: '#5c4832'
     }).setOrigin(0.5);
 
     this.feedBtnContainer.add([feedBg, this.feedBtnText]);
     this.add(this.feedBtnContainer);
+
+    feedBg.on('pointerover', () => {
+      feedBg.setTexture('button_hover');
+      scene.tweens.add({ targets: this.feedBtnContainer, scale: 1.05, duration: 80 });
+      AudioManager.playSfx('button_hover');
+    });
+    feedBg.on('pointerout', () => {
+      feedBg.setTexture('button');
+      feedBg.y = 0;
+      this.feedBtnText.y = -2;
+      scene.tweens.add({ targets: this.feedBtnContainer, scale: 1.0, duration: 80 });
+    });
+    feedBg.on('pointerdown', () => {
+      feedBg.setTexture('button_click');
+      feedBg.y = 2; // Y translation
+      this.feedBtnText.y = 0;
+      scene.tweens.add({ targets: this.feedBtnContainer, scale: 0.95, duration: 40 });
+    });
+    feedBg.on('pointerup', () => {
+      feedBg.setTexture('button_hover');
+      feedBg.y = 0;
+      this.feedBtnText.y = -2;
+      scene.tweens.add({ targets: this.feedBtnContainer, scale: 1.05, duration: 40 });
+      this.feedCreature();
+    });
+
+    // 6. Mount / Dismount Button
+    this.mountBtnContainer = scene.add.container(0, 215);
+    
+    const mountBg = scene.add.nineslice(0, 0, 'button', 0, 240, 36, 18, 18, 12, 12);
+    mountBg.setInteractive({ useHandCursor: true });
+
+    this.mountBtnText = scene.add.text(0, -2, '🏇 Mount Pet', {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#5c4832'
+    }).setOrigin(0.5);
+
+    this.mountBtnContainer.add([mountBg, this.mountBtnText]);
+    this.add(this.mountBtnContainer);
+    this.mountBtnContainer.setVisible(false);
+
+    mountBg.on('pointerover', () => {
+      mountBg.setTexture('button_hover');
+      scene.tweens.add({ targets: this.mountBtnContainer, scale: 1.05, duration: 80 });
+      AudioManager.playSfx('button_hover');
+    });
+    mountBg.on('pointerout', () => {
+      mountBg.setTexture('button');
+      mountBg.y = 0;
+      this.mountBtnText.y = -2;
+      scene.tweens.add({ targets: this.mountBtnContainer, scale: 1.0, duration: 80 });
+    });
+    mountBg.on('pointerdown', () => {
+      mountBg.setTexture('button_click');
+      mountBg.y = 2; // Y translation
+      this.mountBtnText.y = 0;
+      scene.tweens.add({ targets: this.mountBtnContainer, scale: 0.95, duration: 40 });
+    });
+    mountBg.on('pointerup', () => {
+      mountBg.setTexture('button_hover');
+      mountBg.y = 0;
+      this.mountBtnText.y = -2;
+      scene.tweens.add({ targets: this.mountBtnContainer, scale: 1.05, duration: 40 });
+      this.toggleMountState();
+    });
 
     this.setVisible(false);
 
@@ -137,13 +234,14 @@ export class CreatureDetailPanel extends Phaser.GameObjects.Container {
 
     if (!this.currentCreature) return;
 
-    // Set sprite based on area fallback
-    let spriteKey = 'creature_meadow';
-    if (this.currentCreature.area === 'whisper_forest') spriteKey = 'creature_forest';
-    else if (this.currentCreature.area === 'crystal_mountain') spriteKey = 'creature_mountain';
-    else if (this.currentCreature.area === 'golden_dunes') spriteKey = 'creature_dunes';
-    else if (this.currentCreature.area === 'sky_island') spriteKey = 'creature_sky';
-    this.creatureSprite.setTexture(spriteKey);
+    // Query dynamic visuals for correct sprite texture, tint, and scale factor
+    const visuals = CreatureVisuals.getVisuals(this.currentCreature);
+    this.creatureSprite.setTexture(visuals.spriteKey);
+    this.creatureSprite.clearTint();
+    this.creatureSprite.setTint(visuals.tint);
+    
+    this.baseScale = 1.6 * visuals.scaleMult * (1 + (owned.level - 1) * 0.05);
+    this.creatureSprite.setScale(this.baseScale);
 
     this.updateDetails();
     this.setVisible(true);
@@ -154,6 +252,11 @@ export class CreatureDetailPanel extends Phaser.GameObjects.Container {
 
     const owned = this.currentOwned;
     const c = this.currentCreature;
+    
+    // Update visual scale based on level
+    const visuals = CreatureVisuals.getVisuals(c);
+    this.baseScale = 1.6 * visuals.scaleMult * (1 + (owned.level - 1) * 0.05);
+    this.creatureSprite.setScale(this.baseScale);
 
     // Display Nickname if present, otherwise base name
     const dispName = owned.nickname ? `"${owned.nickname}" (${c.name})` : c.name;
@@ -180,7 +283,12 @@ export class CreatureDetailPanel extends Phaser.GameObjects.Container {
     const isPlaced = (owned as any).placedSlot !== undefined && (owned as any).placedSlot !== null;
     const placementText = isPlaced ? `Slot ${(owned as any).placedSlot + 1}` : 'Sanctuary Enclosure';
 
-    this.statsText.setText(`Level ${owned.level} • ${rateText}\nLocation: ${placementText}`);
+    let traitsStr = '';
+    if (owned.trait === 'Rideable') traitsStr += '🏇 Rideable';
+    if (owned.canFly) traitsStr += (traitsStr ? ' • ' : '') + '🕊️ Flying (Wings)';
+    if (!traitsStr) traitsStr = 'None';
+
+    this.statsText.setText(`Level ${owned.level} • ${rateText}\nLocation: ${placementText}\nTraits: ${traitsStr}`);
 
     // Level up feed button
     const levelUpCost = EconomySystem.getCreatureLevelUpCost(c, owned.level);
@@ -193,6 +301,42 @@ export class CreatureDetailPanel extends Phaser.GameObjects.Container {
       this.feedBtnText.setText(`☘️ Feed & Train (${levelUpCost} Coins)`);
       this.feedBtnContainer.setAlpha(state.coins >= levelUpCost ? 1 : 0.6);
     }
+
+    // Mount Button
+    const canMount = owned.trait === 'Rideable' || owned.canFly;
+    if (canMount) {
+      this.mountBtnContainer.setVisible(true);
+      if (state.activeMountInstanceId === owned.instanceId) {
+        this.mountBtnText.setText('❌ Dismount Pet');
+      } else {
+        const actionLabel = owned.canFly ? '🕊️ Fly Pet' : '🏇 Ride Pet';
+        this.mountBtnText.setText(actionLabel);
+      }
+    } else {
+      this.mountBtnContainer.setVisible(false);
+    }
+  }
+
+  private toggleMountState(): void {
+    if (!this.currentOwned) return;
+    const state = SaveSystem.getState();
+    const owned = this.currentOwned;
+
+    if (state.activeMountInstanceId === owned.instanceId) {
+      state.activeMountInstanceId = undefined;
+      AudioManager.playSfx('ui_confirm');
+      alert('Dismounted creature!');
+    } else {
+      state.activeMountInstanceId = owned.instanceId;
+      AudioManager.playSfx('ui_confirm');
+      alert(`Mounted: ${owned.nickname || this.currentCreature?.name || 'Creature'}!`);
+    }
+
+    SaveSystem.markDirty();
+    SaveSystem.forceSave();
+    this.updateDetails();
+    
+    EventBus.emit('mountStateChanged');
   }
 
   private feedCreature(): void {
@@ -206,11 +350,16 @@ export class CreatureDetailPanel extends Phaser.GameObjects.Container {
       this.scene.tweens.add({
         targets: this.creatureSprite,
         y: -140,
-        scaleY: 5.5,
-        scaleX: 3.5,
+        scaleY: this.baseScale * 1.35,
+        scaleX: this.baseScale * 0.7,
         duration: 150,
         yoyo: true,
-        ease: 'Quad.easeOut'
+        ease: 'Quad.easeOut',
+        onComplete: () => {
+          this.creatureSprite.y = -110;
+          this.creatureSprite.setScale(this.baseScale);
+          EventBus.emit('creatureLeveledUp', { instanceId: this.currentOwned!.instanceId });
+        }
       });
     } else {
       AudioManager.playSfx('capture_fail');

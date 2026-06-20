@@ -19,11 +19,11 @@ export class AchievementPanel extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y);
 
-    const width = 560;
-    const height = 430;
+    const width = 760;
+    const height = 580;
 
-    // Background
-    this.panelBg = scene.add.nineslice(0, 0, 'panel_frame', 0, width, height, 16, 16, 16, 16);
+    // Main Panel Background
+    this.panelBg = scene.add.nineslice(0, 0, 'modal_window', 0, width, height, 32, 32, 32, 32);
     this.add(this.panelBg);
 
     // Title
@@ -33,13 +33,23 @@ export class AchievementPanel extends Phaser.GameObjects.Container {
       fontStyle: 'bold',
       color: '#5c4832'
     }).setOrigin(0.5);
+    title.setVisible(false);
     this.add(title);
 
     // Close Button
-    const closeBtn = scene.add.text(width / 2 - 30, -height / 2 + 25, '❌', {
-      fontFamily: 'Inter, sans-serif',
-      fontSize: '18px'
+    const closeBtn = scene.add.text(width / 2 - 14, -height / 2 + 16, '✕', {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: '#5c4832'
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerover', () => {
+      closeBtn.setColor('#8f6f4a');
+      AudioManager.playSfx('button_hover');
+    });
+    closeBtn.on('pointerout', () => {
+      closeBtn.setColor('#5c4832');
+    });
     closeBtn.on('pointerdown', () => {
       AudioManager.playSfx('ui_tap');
       this.setVisible(false);
@@ -55,23 +65,99 @@ export class AchievementPanel extends Phaser.GameObjects.Container {
     }).setOrigin(0.5);
     this.add(this.pageText);
 
-    this.prevBtn = scene.add.text(-80, height / 2 - 25, '◀ Prev', {
+    // Prev Button
+    const prevContainer = scene.add.container(-100, height / 2 - 25);
+    const prevBg = scene.add.image(0, 0, 'button_small').setScale(0.85).setInteractive({ useHandCursor: true });
+    const prevTxt = scene.add.text(0, -2, '◀', {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '13px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#5c4832'
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.prevBtn.on('pointerdown', () => this.changePage(-1));
-    this.add(this.prevBtn);
+    }).setOrigin(0.5);
+    prevContainer.add([prevBg, prevTxt]);
+    this.prevBtn = prevTxt;
+    this.add(prevContainer);
 
-    this.nextBtn = scene.add.text(80, height / 2 - 25, 'Next ▶', {
+    prevBg.on('pointerover', () => {
+      if (this.currentPage > 0) {
+        prevBg.setTexture('button_small_hover');
+        scene.tweens.add({ targets: prevContainer, scale: 1.05, duration: 80 });
+        AudioManager.playSfx('button_hover');
+      }
+    });
+    prevBg.on('pointerout', () => {
+      prevBg.setTexture('button_small');
+      prevBg.y = 0;
+      prevTxt.y = -2;
+      scene.tweens.add({ targets: prevContainer, scale: 1.0, duration: 80 });
+    });
+    prevBg.on('pointerdown', () => {
+      if (this.currentPage > 0) {
+        prevBg.setTexture('button_small_click');
+        prevBg.y = 2; // Y translation downwards by 2px
+        prevTxt.y = 0;
+        scene.tweens.add({ targets: prevContainer, scale: 0.95, duration: 40 });
+      }
+    });
+    prevBg.on('pointerup', () => {
+      if (this.currentPage > 0) {
+        prevBg.setTexture('button_small_hover');
+        prevBg.y = 0;
+        prevTxt.y = -2;
+        scene.tweens.add({ targets: prevContainer, scale: 1.05, duration: 40 });
+        this.changePage(-1);
+      }
+    });
+
+    // Next Button
+    const nextContainer = scene.add.container(100, height / 2 - 25);
+    const nextBg = scene.add.image(0, 0, 'button_small').setScale(0.85).setInteractive({ useHandCursor: true });
+    const nextTxt = scene.add.text(0, -2, '▶', {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '13px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#5c4832'
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.nextBtn.on('pointerdown', () => this.changePage(1));
-    this.add(this.nextBtn);
+    }).setOrigin(0.5);
+    nextContainer.add([nextBg, nextTxt]);
+    this.nextBtn = nextTxt;
+    this.add(nextContainer);
+
+    nextBg.on('pointerover', () => {
+      const achievements = DataLoader.getAchievements();
+      const totalPages = Math.max(1, Math.ceil(achievements.length / this.itemsPerPage));
+      if (this.currentPage < totalPages - 1) {
+        nextBg.setTexture('button_small_hover');
+        scene.tweens.add({ targets: nextContainer, scale: 1.05, duration: 80 });
+        AudioManager.playSfx('button_hover');
+      }
+    });
+    nextBg.on('pointerout', () => {
+      nextBg.setTexture('button_small');
+      nextBg.y = 0;
+      nextTxt.y = -2;
+      scene.tweens.add({ targets: nextContainer, scale: 1.0, duration: 80 });
+    });
+    nextBg.on('pointerdown', () => {
+      const achievements = DataLoader.getAchievements();
+      const totalPages = Math.max(1, Math.ceil(achievements.length / this.itemsPerPage));
+      if (this.currentPage < totalPages - 1) {
+        nextBg.setTexture('button_small_click');
+        nextBg.y = 2; // Y translation downwards by 2px
+        nextTxt.y = 0;
+        scene.tweens.add({ targets: nextContainer, scale: 0.95, duration: 40 });
+      }
+    });
+    nextBg.on('pointerup', () => {
+      const achievements = DataLoader.getAchievements();
+      const totalPages = Math.max(1, Math.ceil(achievements.length / this.itemsPerPage));
+      if (this.currentPage < totalPages - 1) {
+        nextBg.setTexture('button_small_hover');
+        nextBg.y = 0;
+        nextTxt.y = -2;
+        scene.tweens.add({ targets: nextContainer, scale: 1.05, duration: 40 });
+        this.changePage(1);
+      }
+    });
 
     this.setVisible(false);
 
@@ -113,10 +199,27 @@ export class AchievementPanel extends Phaser.GameObjects.Container {
 
     this.pageText.setText(`Page ${this.currentPage + 1} of ${totalPages}`);
 
-    this.prevBtn.setAlpha(this.currentPage === 0 ? 0.3 : 1);
-    this.prevBtn.setInteractive(this.currentPage > 0);
-    this.nextBtn.setAlpha(this.currentPage === totalPages - 1 ? 0.3 : 1);
-    this.nextBtn.setInteractive(this.currentPage < totalPages - 1);
+    const prevBg = this.prevBtn.parentContainer?.list[0] as Phaser.GameObjects.Image;
+    if (prevBg) {
+      if (this.currentPage === 0) {
+        prevBg.disableInteractive();
+        this.prevBtn.parentContainer.setAlpha(0.3);
+      } else {
+        prevBg.setInteractive({ useHandCursor: true });
+        this.prevBtn.parentContainer.setAlpha(1.0);
+      }
+    }
+
+    const nextBg = this.nextBtn.parentContainer?.list[0] as Phaser.GameObjects.Image;
+    if (nextBg) {
+      if (this.currentPage === totalPages - 1) {
+        nextBg.disableInteractive();
+        this.nextBtn.parentContainer.setAlpha(0.3);
+      } else {
+        nextBg.setInteractive({ useHandCursor: true });
+        this.nextBtn.parentContainer.setAlpha(1.0);
+      }
+    }
 
     const startIdx = this.currentPage * this.itemsPerPage;
     const endIdx = Math.min(achievements.length, startIdx + this.itemsPerPage);
@@ -138,7 +241,7 @@ export class AchievementPanel extends Phaser.GameObjects.Container {
       const rowContainer = this.scene.add.container(0, y);
 
       // Row background slot
-      const rowBg = this.scene.add.nineslice(0, 0, 'button', 0, 500, 48, 6, 6, 6, 6);
+      const rowBg = this.scene.add.nineslice(0, 0, 'button', 0, 500, 48, 18, 18, 12, 12);
       if (isUnlocked) {
         rowBg.setTint(0xfff7e6); // goldish tint
       } else {

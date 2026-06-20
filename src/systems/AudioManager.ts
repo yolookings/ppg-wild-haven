@@ -10,19 +10,12 @@ export class AudioManager {
   private static currentMusicId: string | null = null;
   private static musicInterval: number | null = null;
   private static synthOscillators: { osc: OscillatorNode; gain: GainNode }[] = [];
+  
+  // Buffer-based music (MP3 files)
+  private static currentBufferSource: AudioBufferSourceNode | null = null;
+  private static audioBufferCache: Map<string, AudioBuffer> = new Map();
 
-  private static notesMap: Record<string, number> = {
-    'C3': 130.81, 'D3': 146.83, 'E3': 164.81, 'F3': 174.61, 'G3': 196.00, 'A3': 220.00, 'B3': 246.94,
-    'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'G4': 392.00, 'A4': 440.00, 'B4': 493.88,
-    'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'G5': 783.99, 'A5': 880.00, 'B5': 987.77,
-    'C6': 1046.50, 'E6': 1318.51, 'G6': 1567.98
-  };
 
-  private static meadowScale = ['C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5', 'G5', 'A5'];
-  private static forestScale = ['A3', 'C4', 'D4', 'E4', 'G4', 'A4', 'C5', 'D5', 'E5', 'G5']; // A Minor Pentatonic
-  private static mountainScale = ['B3', 'D4', 'E4', 'F#4', 'A4', 'B4', 'D5', 'E5', 'F#5', 'A5']; // Pentatonic crisp
-  private static desertScale = ['D3', 'Eb3', 'F#3', 'G3', 'A3', 'Bb3', 'C#4', 'D4']; // Double Harmonic / Phrygian Dominant
-  private static sanctuaryScale = ['C4', 'E4', 'G4', 'B4', 'D5', 'E5', 'G5', 'B5']; // C Maj7
 
   public static initialize(): void {
     // Audio context is created on first interaction
@@ -105,130 +98,22 @@ export class AudioManager {
       try { o.osc.stop(); } catch(e){}
     });
     this.synthOscillators = [];
+
+    // Stop buffer-based audio (MP3)
+    if (this.currentBufferSource) {
+      try { this.currentBufferSource.stop(); } catch(e){}
+      this.currentBufferSource = null;
+    }
   }
 
-  private static startMusicEngine(trackId: string): void {
+  private static startMusicEngine(_trackId: string): void {
     if (!this.ctx || !this.musicNode) return;
 
-    let scale = this.meadowScale;
-    let tempo = 180; // BPM
-    let waveType: OscillatorType = 'sine';
-    
-
-    switch (trackId) {
-      case 'music_meadow':
-        scale = this.meadowScale;
-        tempo = 110;
-        waveType = 'sine';
-        break;
-      case 'music_forest':
-        scale = this.forestScale;
-        tempo = 80;
-        waveType = 'sine';
-        break;
-      case 'music_mountain':
-        scale = this.mountainScale;
-        tempo = 140;
-        waveType = 'triangle';
-        break;
-      case 'music_desert':
-        scale = this.desertScale;
-        tempo = 90;
-        waveType = 'triangle';
-        break;
-      case 'music_sanctuary':
-      case 'music_menu':
-        scale = this.sanctuaryScale;
-        tempo = 100;
-        waveType = 'sine';
-        break;
-      case 'music_sanctuary_sky':
-        scale = this.meadowScale;
-        tempo = 120;
-        waveType = 'sine';
-        break;
-    }
-
-    const noteDuration = (60 / tempo) * 1000; // time per beat
-    let step = 0;
-
-    const playStep = () => {
-      if (!this.ctx || !this.musicNode) return;
-      
-      const time = this.ctx.currentTime;
-      
-      // Ambient Bass/Pad (Every 4 beats)
-      if (step % 4 === 0) {
-        const rootNoteStr = scale[0];
-        let rootFreq = this.notesMap[rootNoteStr] || 130;
-        rootFreq = rootFreq / 2; // Octave lower for bass
-        
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        const filter = this.ctx.createBiquadFilter();
-
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(rootFreq, time);
-        
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(400, time);
-
-        gain.gain.setValueAtTime(0, time);
-        gain.gain.linearRampToValueAtTime(0.15, time + 0.5);
-        gain.gain.exponentialRampToValueAtTime(0.001, time + (noteDuration * 4) / 1000 - 0.1);
-
-        osc.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.musicNode);
-
-        osc.start(time);
-        osc.stop(time + (noteDuration * 4) / 1000);
-      }
-
-      // Melodic notes (probability based)
-      if (Math.random() > 0.3) {
-        // Choose note from scale
-        const noteIndex = Math.floor(Math.random() * (scale.length - 2)) + 2; // Avoid the lowest base note
-        const noteStr = scale[noteIndex];
-        const freq = this.notesMap[noteStr] || 440;
-
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        const delay = this.ctx.createDelay();
-        const delayGain = this.ctx.createGain();
-
-        osc.type = waveType;
-        osc.frequency.setValueAtTime(freq, time);
-
-        gain.gain.setValueAtTime(0, time);
-        gain.gain.linearRampToValueAtTime(0.06, time + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, time + (noteDuration * 0.8) / 1000);
-
-        // Subtly echo
-        delay.delayTime.setValueAtTime(noteDuration * 0.5 / 1000, time);
-        delayGain.gain.setValueAtTime(0.02, time);
-
-        osc.connect(gain);
-        gain.connect(this.musicNode);
-
-        // Connect delay echo
-        gain.connect(delay);
-        delay.connect(delayGain);
-        delayGain.connect(this.musicNode);
-
-        osc.start(time);
-        osc.stop(time + noteDuration / 1000);
-      }
-
-      step++;
-    };
-
-    // Play first step immediately
-    playStep();
-    
-    // Set interval to play music
-    this.musicInterval = setInterval(playStep, noteDuration) as unknown as number;
+    // Always use the existing MP3 audio for ambient music
+    this.playMp3Track('medieval-audio');
+    return;
   }
+
 
   public static playSfx(sfxId: string): void {
     if (!this.ctx || !this.sfxNode) return;
@@ -349,6 +234,21 @@ export class AudioManager {
           oscWhoosh.start(time);
           oscWhoosh.stop(time + 0.3);
           break;
+        case 'npc_greeting':
+          this.playTone(440.00, 'sine', 0.08, 0.15, time);
+          this.playTone(554.37, 'sine', 0.08, 0.15, time + 0.08);
+          this.playTone(659.25, 'sine', 0.1, 0.25, time + 0.16);
+          break;
+        case 'ui_error':
+          this.playTone(220.00, 'sawtooth', 0.04, 0.15, time);
+          this.playTone(174.61, 'sawtooth', 0.03, 0.2, time + 0.05);
+          break;
+        case 'quest_update':
+          this.playTone(523.25, 'sine', 0.1, 0.1, time);
+          this.playTone(659.25, 'sine', 0.1, 0.1, time + 0.07);
+          this.playTone(783.99, 'sine', 0.12, 0.15, time + 0.14);
+          this.playTone(1046.50, 'triangle', 0.12, 0.3, time + 0.21);
+          break;
       }
     });
   }
@@ -371,5 +271,71 @@ export class AudioManager {
 
     osc.start(time);
     osc.stop(time + duration + 0.05);
+  }
+
+  private static playMp3Track(key: string): void {
+    if (!this.ctx || !this.musicNode) return;
+
+    const decodedBuf = this.audioBufferCache.get(key);
+    if (decodedBuf) {
+      this.startBufferSource(decodedBuf);
+      return;
+    }
+
+    const url = `assets/${key}.mp3`;
+    fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed to load ${url}`);
+        return res.arrayBuffer();
+      })
+      .then(buffer => this.ctx!.decodeAudioData(buffer))
+      .then(decoded => {
+        this.audioBufferCache.set(key, decoded);
+        this.startBufferSource(decoded);
+      })
+      .catch(err => {
+        console.warn(`AudioManager: Could not load ${url}`, err);
+      });
+  }
+
+  private static startBufferSource(buffer: AudioBuffer, fadeInSec: number = 2.5): void {
+    if (!this.ctx || !this.musicNode) return;
+
+    const state = SaveSystem.getState();
+    const targetVol = state.settings.muted ? 0 : state.settings.musicVolume * 0.4;
+
+    // Start at zero volume, ramp up for fade-in
+    this.musicNode.gain.setValueAtTime(0, this.ctx.currentTime);
+    this.musicNode.gain.linearRampToValueAtTime(targetVol, this.ctx.currentTime + fadeInSec);
+
+    this.currentBufferSource = this.ctx.createBufferSource();
+    this.currentBufferSource.buffer = buffer;
+    this.currentBufferSource.loop = true;
+    this.currentBufferSource.connect(this.musicNode);
+    this.currentBufferSource.start();
+  }
+
+  public static fadeOutAndStop(durationMs: number = 1000): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.ctx || !this.musicNode) {
+        resolve();
+        return;
+      }
+
+      const ctx = this.ctx;
+      const musicNode = this.musicNode;
+      const currentGain = musicNode.gain.value || 0;
+      musicNode.gain.cancelScheduledValues(ctx.currentTime);
+      musicNode.gain.setValueAtTime(currentGain, ctx.currentTime);
+      musicNode.gain.linearRampToValueAtTime(0, ctx.currentTime + durationMs / 1000);
+
+      setTimeout(() => {
+        this.stopMusicEngine();
+        // Restore gain for next track
+        const state = SaveSystem.getState();
+        musicNode.gain.setValueAtTime(state.settings.muted ? 0 : state.settings.musicVolume * 0.4, ctx.currentTime);
+        resolve();
+      }, durationMs);
+    });
   }
 }
