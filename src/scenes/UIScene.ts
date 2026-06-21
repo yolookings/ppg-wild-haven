@@ -506,27 +506,32 @@ export class UIScene extends Phaser.Scene {
   }
 
   update(_time: number, _delta: number): void {
-    this.checkTutorialProgress();
-    this.updateTutorialArrow();
-
-    // Auto-hide HUD if MainMenuScene is the active scene
+    // Auto-hide HUD and Tutorial if MainMenuScene is the active scene
     if (this.scene.manager.isActive('MainMenuScene')) {
       if (this.hud && this.hud.visible) {
         this.hud.setVisible(false);
       }
-    } else {
-      if (this.hud && !this.hud.visible) {
-        this.hud.setVisible(true);
+      if (this.tutorialPanel && this.tutorialPanel.visible) {
+        this.tutorialPanel.setVisible(false);
+        this.tutorialArrow.clear();
       }
-      
-      // Perform offline checks once we enter the game
-      if (!this.hasCheckedOfflineEarnings) {
-        this.hasCheckedOfflineEarnings = true;
-        this.time.delayedCall(500, () => {
-          this.checkOfflineEarnings();
-          AchievementSystem.checkDailyStreak();
-        });
-      }
+      return;
+    }
+
+    this.checkTutorialProgress();
+    this.updateTutorialArrow();
+
+    if (this.hud && !this.hud.visible) {
+      this.hud.setVisible(true);
+    }
+    
+    // Perform offline checks once we enter the game
+    if (!this.hasCheckedOfflineEarnings) {
+      this.hasCheckedOfflineEarnings = true;
+      this.time.delayedCall(500, () => {
+        this.checkOfflineEarnings();
+        AchievementSystem.checkDailyStreak();
+      });
     }
   }
 

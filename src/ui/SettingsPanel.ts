@@ -51,7 +51,7 @@ export class SettingsPanel extends Phaser.GameObjects.Container {
     const state = SaveSystem.getState();
 
     // Volume Sliders Container
-    let startY = -height / 2 + 150;
+    let startY = -height / 2 + 200;
 
     // Music Volume
     const musicLabel = scene.add.text(-180, startY, 'Music Volume', {
