@@ -8,7 +8,8 @@ export class BootScene extends Phaser.Scene {
 
   preload(): void {
     // Load minimal asset required for the preload progress bar (if any)
-    // We will just draw graphics in PreloadScene, so we transition immediately.
+    this.load.image('loading_bg', 'assets/loading-background.png');
+    this.load.image('text-bar', 'assets/text-bar.png');
   }
 
   create(): void {

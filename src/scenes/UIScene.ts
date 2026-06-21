@@ -699,7 +699,7 @@ export class UIScene extends Phaser.Scene {
 
     const frameW = Math.min(width - 40, 480);
     const frameH = 54;
-    const frame = this.add.nineslice(0, 0, 'button_long', 0, frameW, frameH, 18, 18, 12, 12);
+    const frame = this.add.nineslice(0, 0, 'text-bar', 0, frameW, frameH, 16, 16, 16, 16);
     frame.setInteractive({ useHandCursor: true });
     this.tutorialPanel.add(frame);
 

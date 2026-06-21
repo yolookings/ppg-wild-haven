@@ -515,7 +515,9 @@ export class ExploreScene extends Phaser.Scene {
     });
 
     this.input.keyboard?.on('keydown-E', () => {
-      if (this.nearestInteractable && !this.isQteActive && !this.sellPanel && !this.merchantShopPanel && !DialogueManager.isDialogueActive()) {
+      if (this.tetheredCreature) {
+        this.releaseTetheredCreature();
+      } else if (this.nearestInteractable && !this.isQteActive && !this.sellPanel && !this.merchantShopPanel && !DialogueManager.isDialogueActive()) {
         if (this.nearestInteractableType === 'portal') {
           this.transitionToSanctuary();
         }
@@ -1668,63 +1670,20 @@ export class ExploreScene extends Phaser.Scene {
     this.isQteActive = false;
     this.activeCreatureForCapture = null;
 
-    // Show Capture Choice Modal
+    // Tether immediately instead of showing a modal
     this.time.delayedCall(800, () => {
-      this.showCaptureResultModal(creature);
-    });
-  }
+      if (this.tetheredCreature && this.tetheredCreature !== creature) {
+        this.tetheredCreature.destroy();
+      }
 
-  private showCaptureResultModal(creature: WildCreature): void {
-    const modal = this.add.container(this.cameras.main.width / 2, this.cameras.main.height / 2);
-    modal.setDepth(200);
-
-    const bg = this.add.nineslice(0, 0, 'modal_window', 0, 360, 220, 32, 32, 32, 32);
-    modal.add(bg);
-
-    const title = this.add.text(0, -60, 'CAPTURE SUCCESS!', {
-      fontFamily: 'Outfit, sans-serif',
-      fontSize: '22px',
-      fontStyle: 'bold',
-      color: '#4a3b2c'
-    }).setOrigin(0.5);
-
-    const desc = this.add.text(0, -20, `You caught a ${creature.creatureData.rarity} ${creature.creatureData.name}!\nWhat would you like to do?`, {
-      fontFamily: 'Inter, sans-serif',
-      fontSize: '14px',
-      color: '#5c4832',
-      align: 'center'
-    }).setOrigin(0.5);
-
-    modal.add([title, desc]);
-
-    // Send to Sanctuary Button
-    const sendBtn = this.add.nineslice(0, 30, 'button', 0, 220, 42, 18, 18, 12, 12);
-    sendBtn.setInteractive({ useHandCursor: true });
-    const sendTxt = this.add.text(0, 28, 'Send to Sanctuary', {
-      fontFamily: 'Outfit, sans-serif',
-      fontSize: '15px',
-      fontStyle: 'bold',
-      color: '#5c4832'
-    }).setOrigin(0.5);
-
-    sendBtn.on('pointerdown', () => {
-      AudioManager.playSfx('ui_confirm');
-      const state = SaveSystem.getState();
-      const instanceId = 'c_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-      const newOwned = {
-        instanceId,
-        creatureId: creature.creatureData.id,
-        name: creature.creatureData.name,
-        happiness: 1.0,
-        hunger: 1.0,
-        cleanliness: 1.0,
-        level: 1,
-        xp: 0,
-        capturedAt: Date.now()
-      };
-      state.ownedCreatures.push(newOwned);
+      this.tetheredCreature = creature;
+      creature.isTethered = true;
+      creature.setInteractive(); // enable if we need it later, though E is global
       
-      // Calculate XP and Coins
+      const state = SaveSystem.getState();
+      state.tetheredCreatureId = creature.creatureData.id;
+
+      // Calculate XP and Coins immediately upon capture
       let xp = 20, coins = 10;
       switch (creature.creatureData.rarity) {
         case 'Rare': xp = 45; coins = 25; break;
@@ -1738,61 +1697,37 @@ export class ExploreScene extends Phaser.Scene {
 
       SaveSystem.markDirty();
       SaveSystem.forceSave();
-      
-      creature.destroy();
-      modal.destroy();
-      
-      this.createRewardFloatingText(this.player.x, this.player.y - 30, '+ Sent to Sanctuary!', '#8fd14f');
-    });
 
-    // Release Button
-    const relBtn = this.add.nineslice(0, 80, 'button', 0, 220, 36, 18, 18, 12, 12);
-    relBtn.setInteractive({ useHandCursor: true });
-    const relTxt = this.add.text(0, 78, 'Release to Wild', {
-      fontFamily: 'Outfit, sans-serif',
-      fontSize: '14px',
-      fontStyle: 'bold',
-      color: '#8a5200'
-    }).setOrigin(0.5);
-
-    relBtn.on('pointerdown', () => {
-      AudioManager.playSfx('ui_tap');
-      // Gentle release animation
-      this.tweens.add({
-        targets: creature,
-        alpha: 0,
-        scale: 0.5,
-        duration: 800,
-        onComplete: () => creature.destroy()
-      });
-      modal.destroy();
-      this.createRewardFloatingText(this.player.x, this.player.y - 30, 'Released peacefully...', '#b5b5b5');
-    });
-
-    // Button Hover Effects
-    [sendBtn, relBtn].forEach((btn, idx) => {
-      const txt = idx === 0 ? sendTxt : relTxt;
-      btn.on('pointerover', () => {
-        btn.setTexture('button_hover');
-        this.tweens.add({ targets: [btn, txt], scale: 1.05, duration: 80 });
-      });
-      btn.on('pointerout', () => {
-        btn.setTexture('button');
-        this.tweens.add({ targets: [btn, txt], scale: 1.0, duration: 80 });
-      });
-    });
-
-    modal.add([sendBtn, sendTxt, relBtn, relTxt]);
-
-    modal.setScale(0.8);
-    this.tweens.chain({
-      targets: modal,
-      tweens: [
-        { scale: 1.05, duration: 200, ease: 'Sine.easeOut' },
-        { scale: 1.0, duration: 150, ease: 'Sine.easeIn' }
-      ]
+      this.createRewardFloatingText(this.player.x, this.player.y - 30, '+ Tethered! (Press E to release)', '#8fd14f');
     });
   }
+
+  private releaseTetheredCreature(): void {
+    if (!this.tetheredCreature) return;
+    
+    // Gentle release animation
+    this.tweens.add({
+      targets: this.tetheredCreature,
+      alpha: 0,
+      y: this.tetheredCreature.y - 20,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => {
+        this.tetheredCreature?.destroy();
+        this.tetheredCreature = null;
+        
+        const state = SaveSystem.getState();
+        state.tetheredCreatureId = null;
+        SaveSystem.markDirty();
+        SaveSystem.forceSave();
+      }
+    });
+    
+    AudioManager.playSfx('ui_close');
+    this.createRewardFloatingText(this.player.x, this.player.y - 30, 'Released peacefully...', '#b5b5b5');
+  }
+
+
 
   private createCaptureParticles(x: number, y: number, rarity: string): void {
     let particleColor: number;

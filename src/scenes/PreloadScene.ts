@@ -29,7 +29,10 @@ export class PreloadScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 6
     }).setOrigin(0.5);
-    
+    // Hint / Loading Text Background
+    const hintBg = this.add.nineslice(width / 2, height / 2 - 25, 'text-bar', 0, 340, 50, 16, 16, 16, 16);
+    hintBg.setOrigin(0.5);
+
     const subText = this.add.text(width / 2, height / 2 - 25, 'Preparing Sanctuary...', {
       fontFamily: 'Inter, sans-serif',
       fontSize: '18px',
@@ -88,6 +91,7 @@ export class PreloadScene extends Phaser.Scene {
       progressBar.destroy();
       progressBarBg.destroy();
       titleText.destroy();
+      hintBg.destroy();
       subText.destroy();
       bg.destroy();
       overlay.destroy();

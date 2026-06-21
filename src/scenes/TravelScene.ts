@@ -133,18 +133,18 @@ export class TravelScene extends Phaser.Scene {
     destTitle.setTint(illustColor);
 
     // 5. Travel Tips Panel (bottom)
-    const tipBoxWidth = Math.min(width - 60, 560);
-    const tipBox = this.add.nineslice(width / 2, height * 0.76, 'button_long', 0, tipBoxWidth, 70, 18, 18, 12, 12);
+    const tipBoxWidth = Math.min(width - 40, 640);
+    const tipBox = this.add.nineslice(width / 2, height * 0.76, 'text-bar', 0, tipBoxWidth, 90, 16, 16, 16, 16);
     tipBox.setOrigin(0.5);
 
     const randomTip = Phaser.Utils.Array.GetRandom(TRAVEL_TIPS);
     this.add.text(width / 2, height * 0.76, randomTip, {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: isMobile ? '10px' : '13px',
+      fontSize: isMobile ? '12px' : '15px',
       fontStyle: 'normal',
       color: '#5c4832',
       align: 'center',
-      wordWrap: { width: tipBoxWidth - 36 }
+      wordWrap: { width: tipBoxWidth - 40 }
     }).setOrigin(0.5);
 
     // 6. Loading Progress Bars & Spinner

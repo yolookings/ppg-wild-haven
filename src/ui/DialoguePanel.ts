@@ -92,16 +92,16 @@ export class DialoguePanel extends Phaser.GameObjects.Container {
     });
 
     // 6. Visual SKIP and CONTINUE Buttons using small button assets
-    this.continueBtn = scene.add.image(width / 2 - 45, height / 2 - 22, 'button_small').setScale(0.55).setInteractive({ useHandCursor: true });
-    this.continueTxt = scene.add.text(width / 2 - 45, height / 2 - 22, 'NEXT', {
+    this.continueBtn = scene.add.image(width / 2 - 75, height / 2 - 22, 'button_small').setScale(0.55).setInteractive({ useHandCursor: true });
+    this.continueTxt = scene.add.text(width / 2 - 75, height / 2 - 22, 'NEXT', {
       fontFamily: 'Outfit, sans-serif',
       fontSize: '14px',
       fontStyle: 'bold',
       color: '#5c4832'
     }).setOrigin(0.5);
 
-    this.skipBtn = scene.add.image(width / 2 - 110, height / 2 - 22, 'button_small').setScale(0.55).setInteractive({ useHandCursor: true });
-    this.skipTxt = scene.add.text(width / 2 - 110, height / 2 - 22, 'SKIP', {
+    this.skipBtn = scene.add.image(width / 2 - 180, height / 2 - 22, 'button_small').setScale(0.55).setInteractive({ useHandCursor: true });
+    this.skipTxt = scene.add.text(width / 2 - 180, height / 2 - 22, 'SKIP', {
       fontFamily: 'Outfit, sans-serif',
       fontSize: '14px',
       fontStyle: 'bold',
