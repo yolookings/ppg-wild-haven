@@ -13,7 +13,10 @@ export type AreaId =
   | "whisper_forest"
   | "crystal_mountain"
   | "golden_dunes"
-  | "sky_island";
+  | "sky_island"
+  | "undead_map"
+  | "coming_soon"
+  | "explore_menu";
 
 export interface Creature {
   id: string;

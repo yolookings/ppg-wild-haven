@@ -202,19 +202,15 @@ export class UIScene extends Phaser.Scene {
   }
 
   private handleExploreTransition(): void {
-    // Switch to ExploreScene
     if (this.scene.isActive('ExploreScene')) return;
 
     AudioManager.playSfx('ui_confirm');
     this.closeAllPanels();
 
-    if (this.scene.isActive('SanctuaryScene')) {
-      this.scene.stop('SanctuaryScene');
-    }
-    
-    const state = SaveSystem.getState();
-    const lastArea = state.unlockedAreas[state.unlockedAreas.length - 1] || 'green_meadow';
-    this.scene.start('TravelScene', { targetScene: 'ExploreScene', areaId: lastArea });
+    // Open Map Selection Screen
+    import('../ui/MapSelectionPanel').then(({ MapSelectionPanel }) => {
+      new MapSelectionPanel(this);
+    });
   }
 
   private closeAllPanels(): void {
@@ -471,8 +467,7 @@ export class UIScene extends Phaser.Scene {
     const toast = this.add.container(width / 2, -60);
     toast.setDepth(200);
 
-    const toastBg = this.add.nineslice(0, 0, 'panel_frame', 0, 320, 65, 24, 24, 24, 24);
-    toastBg.setTint(0xfff7e6);
+    const toastBg = this.add.nineslice(0, 0, 'modal_window', 0, 360, 80, 32, 32, 32, 32);
     toast.add(toastBg);
 
     const titleTxt = this.add.text(0, -18, title, {

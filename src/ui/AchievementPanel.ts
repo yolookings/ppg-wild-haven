@@ -243,9 +243,9 @@ export class AchievementPanel extends Phaser.GameObjects.Container {
       // Row background slot
       const rowBg = this.scene.add.nineslice(0, 0, 'button', 0, 500, 48, 18, 18, 12, 12);
       if (isUnlocked) {
-        rowBg.setTint(0xfff7e6); // goldish tint
+        rowBg.setTint(0x8a5200); // darker gold/brown tint for contrast
       } else {
-        rowBg.setTint(0xe5dcd3); // grayish tint
+        rowBg.setTint(0x4a3b2c); // dark brown tint for contrast
       }
       rowContainer.add(rowBg);
 
@@ -262,7 +262,7 @@ export class AchievementPanel extends Phaser.GameObjects.Container {
         fontFamily: 'Outfit, sans-serif',
         fontSize: '13px',
         fontStyle: 'bold',
-        color: '#5c4832'
+        color: '#ffffff'
       }).setOrigin(0, 0.5);
       rowContainer.add(title);
 
@@ -270,7 +270,7 @@ export class AchievementPanel extends Phaser.GameObjects.Container {
       const desc = this.scene.add.text(-190, 8, ach.description, {
         fontFamily: 'Inter, sans-serif',
         fontSize: '10px',
-        color: '#8c765c'
+        color: '#e0e0e0'
       }).setOrigin(0, 0.5);
       rowContainer.add(desc);
 
@@ -279,7 +279,7 @@ export class AchievementPanel extends Phaser.GameObjects.Container {
         fontFamily: 'Outfit, sans-serif',
         fontSize: '11px',
         fontStyle: 'bold',
-        color: '#5c4832'
+        color: '#ffffff'
       }).setOrigin(0.5);
       rowContainer.add(progValText);
 

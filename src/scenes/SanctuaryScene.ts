@@ -8,6 +8,7 @@ import { AudioManager } from '../systems/AudioManager';
 import { EventBus } from '../systems/EventBus';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { AchievementSystem } from '../systems/AchievementSystem';
+import { MapSelectionPanel } from '../ui/MapSelectionPanel';
 import { DataLoader } from '../data/DataLoader';
 
 interface Habitat {
@@ -291,7 +292,11 @@ export class SanctuaryScene extends Phaser.Scene {
     }
   }
 
-  private triggerPortalInteraction(areaId: string): void {
+  public triggerPortalInteraction(areaId: string): void {
+    if (areaId === 'explore_menu') {
+      new MapSelectionPanel(this);
+      return;
+    }
     const state = SaveSystem.getState();
     const areaData = this.cache.json.get('areas_data').areas.find((a: any) => a.id === areaId);
     if (!areaData) return;
@@ -610,17 +615,14 @@ export class SanctuaryScene extends Phaser.Scene {
     const state = SaveSystem.getState();
 
     const portalConfigs = [
-      { areaId: 'green_meadow', x: 200, y: 300, color: 0x2ecc71 },
-      { areaId: 'whisper_forest', x: 300, y: 150, color: 0x1abc9c },
-      { areaId: 'crystal_mountain', x: 900, y: 150, color: 0x9b59b6 },
-      { areaId: 'golden_dunes', x: 1000, y: 300, color: 0xe67e22 }
+      { areaId: 'explore_menu', x: 1050, y: 150, color: 0x9b59b6 }
     ];
 
     portalConfigs.forEach(cfg => {
       const container = this.add.container(cfg.x, cfg.y);
       container.setDepth(cfg.y + 10);
 
-      const isUnlocked = state.unlockedAreas.includes(cfg.areaId as any);
+      const isUnlocked = cfg.areaId === 'explore_menu' || state.unlockedAreas.includes(cfg.areaId as any);
       const glowColor = isUnlocked ? cfg.color : 0x3e2723;
 
       // A. Drawing Portal Core with concentric rings & glow
@@ -700,7 +702,7 @@ export class SanctuaryScene extends Phaser.Scene {
 
       // B. Floating destination sign
       const areaData = this.cache.json.get('areas_data').areas.find((a: any) => a.id === cfg.areaId);
-      const nameText = areaData ? areaData.name : cfg.areaId.replace('_', ' ');
+      const nameText = cfg.areaId === 'explore_menu' ? 'Explore Maps' : (areaData ? areaData.name : cfg.areaId.replace('_', ' '));
 
       const signFrame = this.add.nineslice(0, -32, 'button', 0, 100, 24, 18, 18, 12, 12).setScale(0.85);
       container.add(signFrame);
@@ -992,26 +994,30 @@ export class SanctuaryScene extends Phaser.Scene {
   private showPortalPrompt(portal: any): void {
     if (!this.activePortalPrompt) return;
 
-    const state = SaveSystem.getState();
-    const areaData = this.cache.json.get('areas_data').areas.find((a: any) => a.id === portal.areaId);
-    if (!areaData) return;
-
-    const isUnlocked = state.unlockedAreas.includes(portal.areaId);
     let promptText = '';
     
-    // Format name to match "Forest" or "Highlands" instead of "Whisper Forest Biome"
-    const displayName = areaData.name
-      .replace(' Biome', '')
-      .replace(' Area', '')
-      .replace('Whisper ', '')
-      .replace('Crystal ', '')
-      .replace('Golden ', '')
-      .replace('Green ', '');
-
-    if (isUnlocked) {
-      promptText = `[E] Travel to ${displayName}`;
+    if (portal.areaId === 'explore_menu') {
+      promptText = '[E] Open World Map';
     } else {
-      promptText = `[E] Unlock ${displayName}\nLvl ${areaData.unlockLevel} | 🪙${areaData.unlockCost}`;
+      const state = SaveSystem.getState();
+      const areaData = this.cache.json.get('areas_data').areas.find((a: any) => a.id === portal.areaId);
+      if (!areaData) return;
+
+      const isUnlocked = state.unlockedAreas.includes(portal.areaId);
+      
+      const displayName = areaData.name
+        .replace(' Biome', '')
+        .replace(' Area', '')
+        .replace('Whisper ', '')
+        .replace('Crystal ', '')
+        .replace('Golden ', '')
+        .replace('Green ', '');
+
+      if (isUnlocked) {
+        promptText = `[E] Travel to ${displayName}`;
+      } else {
+        promptText = `[E] Unlock ${displayName}\nLvl ${areaData.unlockLevel} | 🪙${areaData.unlockCost}`;
+      }
     }
 
     this.activePortalPrompt.txt.setText(promptText);

@@ -8,7 +8,10 @@ export class BiomeManager {
     'whisper_forest': 'quest_meadow_main',
     'crystal_mountain': 'quest_forest_main',
     'golden_dunes': 'quest_mountain_main',
-    'sky_island': 'quest_dunes_main'
+    'sky_island': 'quest_dunes_main',
+    'undead_map': 'quest_meadow_main',
+    'coming_soon': 'quest_meadow_main',
+    'explore_menu': ''
   };
 
   /**

@@ -57,8 +57,10 @@ export class ExploreScene extends Phaser.Scene {
   private activeCreatureForCapture: WildCreature | null = null;
   private qteContainer: Phaser.GameObjects.Container | null = null;
   private isQteActive = false;
+  private isPulling = false;
+  private isTransitioning = false;
   private qteBarGraphics: Phaser.GameObjects.Graphics | null = null;
-  private qteRopeGraphics!: Phaser.GameObjects.Graphics;
+  private qteRopeSprite!: Phaser.GameObjects.TileSprite;
   private qtePullEffect!: Phaser.GameObjects.Graphics;
   private towProgress = 45;
   private towTimerRemaining = 15.0;
@@ -447,9 +449,10 @@ export class ExploreScene extends Phaser.Scene {
     });
 
     // QTE visual helpers
-    this.qteRopeGraphics = this.add.graphics();
-    this.qteRopeGraphics.setDepth(130);
-    this.qteRopeGraphics.setVisible(false);
+    this.qteRopeSprite = this.add.tileSprite(0, 0, 0, 6, 'rope_texture');
+    this.qteRopeSprite.setOrigin(0, 0.5);
+    this.qteRopeSprite.setDepth(130);
+    this.qteRopeSprite.setVisible(false);
     this.qtePullEffect = this.add.graphics();
     this.qtePullEffect.setDepth(131);
     this.qtePullEffect.setVisible(false);
@@ -517,10 +520,6 @@ export class ExploreScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-E', () => {
       if (this.tetheredCreature) {
         this.releaseTetheredCreature();
-      } else if (this.nearestInteractable && !this.isQteActive && !this.sellPanel && !this.merchantShopPanel && !DialogueManager.isDialogueActive()) {
-        if (this.nearestInteractableType === 'portal') {
-          this.transitionToSanctuary();
-        }
       }
     });
 
@@ -698,10 +697,10 @@ export class ExploreScene extends Phaser.Scene {
       primaryColor = '#F2C879';
       secondaryColor = '#e3b55d';
       patternColor = '#E8A23D';
-    } else if (this.areaId === 'sky_island') {
-      primaryColor = '#bbf2f6';
-      secondaryColor = '#a1e4eb';
-      patternColor = '#FFFFFF';
+    } else if (this.areaId === 'undead_map') {
+      primaryColor = '#1A2521';
+      secondaryColor = '#0d1210';
+      patternColor = '#334D41';
     }
 
     // Fill primary background
@@ -1415,55 +1414,73 @@ export class ExploreScene extends Phaser.Scene {
     this.towResistance = baseRes * (1 - resRed);
 
     // Show rope visual between player and creature
-    this.qteRopeGraphics.setVisible(true);
+    this.qteRopeSprite.setVisible(true);
     this.qtePullEffect.setVisible(true);
 
     // Build the Tug-of-War panel
     this.qteContainer = this.add.container(width / 2, height * 0.68);
+    this.qteContainer.setScrollFactor(0);
 
-    const qteBg = this.add.nineslice(0, 0, 'panel_frame', 0, 360, 150, 24, 24, 24, 24);
+    const qteBg = this.add.nineslice(0, 0, 'modal_window', 0, 420, 220, 32, 32, 32, 32);
     this.qteContainer.add(qteBg);
 
     const isBoss = rarity === 'Mythic';
-    const instColor = isBoss ? '#ff5c8a' : '#5c4832';
+    const instColor = isBoss ? '#ff5c8a' : '#4a3b2c';
     const instLabel = isBoss ? `🚨 BOSS: Capturing ${creature.creatureData.name}` : `TUG-OF-WAR: Capturing ${creature.creatureData.name}`;
 
-    const inst = this.add.text(0, -55, instLabel, {
+    const inst = this.add.text(0, -85, instLabel, {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '12px',
+      fontSize: '18px',
       fontStyle: 'bold',
       color: instColor,
       stroke: '#fff7e6',
-      strokeThickness: 1.5
+      strokeThickness: 2
     }).setOrigin(0.5);
     this.qteContainer.add(inst);
 
-    const subInst = this.add.text(0, -40, 'TAP SPACE OR CLICK PULL QUICKLY!', {
+    const subInst = this.add.text(0, -60, 'HOLD SPACE OR CLICK PULL TO REEL IN!', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '8px',
+      fontSize: '10px',
       fontStyle: 'bold',
       color: '#8c765c'
     }).setOrigin(0.5);
     this.qteContainer.add(subInst);
+
+    // Player Strength and Creature Resistance texts
+    const strengthTxt = this.add.text(-120, -35, `Player Strength: ${Math.round(this.towClickPower * 10)}`, {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#2a5c38'
+    }).setOrigin(0.5);
+    this.qteContainer.add(strengthTxt);
+
+    const resTxt = this.add.text(120, -35, `Creature Resistance: ${Math.round(this.towResistance * 10)}`, {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#e86868'
+    }).setOrigin(0.5);
+    this.qteContainer.add(resTxt);
 
     // Draw progress bar
     this.qteBarGraphics = this.add.graphics();
     this.qteContainer.add(this.qteBarGraphics);
     this.drawTowBar();
 
-    // Progress Text
-    this.towProgressText = this.add.text(0, 10, 'Progress: 45%', {
+    // Tension Progress Text
+    this.towProgressText = this.add.text(0, 20, 'Tension Meter: 45%', {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '10px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#5c4832'
     }).setOrigin(0.5);
     this.qteContainer.add(this.towProgressText);
 
     // Timer Text
-    this.towTimerText = this.add.text(0, 26, 'Time Left: 15.0s', {
+    this.towTimerText = this.add.text(0, 40, 'Time Left: 15.0s', {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '10px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: '#ff5c8a',
       stroke: '#fff7e6',
@@ -1472,17 +1489,19 @@ export class ExploreScene extends Phaser.Scene {
     this.qteContainer.add(this.towTimerText);
 
     // Pull Button (Tarik)
-    const btnW = 120;
-    const btnH = 28;
-    const pullBtn = this.add.container(0, 52);
+    const btnW = 160;
+    const btnH = 40;
+    const pullBtn = this.add.container(0, 75);
     
     const pullBg = this.add.nineslice(0, 0, 'button', 0, btnW, btnH, 18, 18, 12, 12).setTint(0xffd9a0);
     pullBg.setInteractive({ useHandCursor: true });
-    pullBg.on('pointerdown', () => this.pullRope());
+    pullBg.on('pointerdown', () => { this.isPulling = true; });
+    pullBg.on('pointerup', () => { this.isPulling = false; });
+    pullBg.on('pointerout', () => { this.isPulling = false; });
     
-    const pullTxt = this.add.text(0, 0, '🎯 PULL (Tarik)', {
+    const pullTxt = this.add.text(0, 2, '🎯 PULL ROPE', {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '10px',
+      fontSize: '16px',
       fontStyle: 'bold',
       color: '#8a5200'
     }).setOrigin(0.5);
@@ -1491,8 +1510,10 @@ export class ExploreScene extends Phaser.Scene {
     this.qteContainer.add(pullBtn);
 
     // Register space/enter keys to Pull
-    this.input.keyboard?.on('keydown-SPACE', this.pullRope, this);
-    this.input.keyboard?.on('keydown-ENTER', this.pullRope, this);
+    this.input.keyboard?.on('keydown-SPACE', () => { this.isPulling = true; }, this);
+    this.input.keyboard?.on('keyup-SPACE', () => { this.isPulling = false; }, this);
+    this.input.keyboard?.on('keydown-ENTER', () => { this.isPulling = true; }, this);
+    this.input.keyboard?.on('keyup-ENTER', () => { this.isPulling = false; }, this);
   }
 
   private drawTowBar(): void {
@@ -1500,9 +1521,9 @@ export class ExploreScene extends Phaser.Scene {
 
     this.qteBarGraphics.clear();
 
-    const barWidth = 280;
-    const barHeight = 16;
-    const barY = -16;
+    const barWidth = 320;
+    const barHeight = 20;
+    const barY = -5;
     const pct = this.towProgress / 100;
 
     // Background track
@@ -1561,8 +1582,7 @@ export class ExploreScene extends Phaser.Scene {
 
     const creature = this.activeCreatureForCapture!;
 
-    this.qteRopeGraphics.setVisible(false);
-    this.qteRopeGraphics.clear();
+    this.qteRopeSprite.setVisible(false);
     this.qtePullEffect.setVisible(false);
     this.qtePullEffect.clear();
 
@@ -2147,6 +2167,8 @@ export class ExploreScene extends Phaser.Scene {
   }
 
   private transitionToSanctuary(): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
     AudioManager.playSfx('ui_confirm');
     if (this.player) this.player.stopMovement();
     this.cameras.main.fadeOut(400, 0, 0, 0);
@@ -2669,11 +2691,30 @@ export class ExploreScene extends Phaser.Scene {
     if (this.isQteActive && this.activeCreatureForCapture) {
       const deltaSec = delta / 1000;
       
-      this.towProgress = Math.max(0, this.towProgress - this.towResistance * deltaSec);
+      if (this.isPulling) {
+        // Holding increases progress rapidly (equivalent to ~8 taps per second)
+        this.towProgress = Math.min(100, this.towProgress + this.towClickPower * 8 * deltaSec);
+        
+        // Tension visual effect
+        if (!this.tweens.isTweening(this.activeCreatureForCapture)) {
+           this.tweens.add({
+             targets: this.activeCreatureForCapture,
+             scaleX: 0.65 * 1.15,
+             scaleY: 0.65 * 0.85,
+             yoyo: true,
+             duration: 100
+           });
+        }
+      } else {
+        // Resistance pulls back progress when not holding
+        this.towProgress = Math.max(0, this.towProgress - this.towResistance * deltaSec);
+      }
+      
       this.towTimerRemaining = Math.max(0, this.towTimerRemaining - deltaSec);
+      this.drawTowBar();
       
       if (this.towProgressText) {
-        this.towProgressText.setText(`Progress: ${Math.floor(this.towProgress)}%`);
+        this.towProgressText.setText(`Tension Meter: ${Math.floor(this.towProgress)}%`);
       }
       if (this.towTimerText) {
         this.towTimerText.setText(`Time Left: ${this.towTimerRemaining.toFixed(1)}s`);
@@ -2681,44 +2722,66 @@ export class ExploreScene extends Phaser.Scene {
       
       this.drawTowBar();
 
-      // Draw rope visual between player and creature
-      this.qteRopeGraphics.clear();
       const px = this.player.x;
       const py = this.player.y;
       const cx = this.activeCreatureForCapture.x;
       const cy = this.activeCreatureForCapture.y;
       const progress = this.towProgress / 100;
       
-      // Rope curve - sags more at low progress, pulls taut at high progress
-      const sag = (1 - progress) * 30;
-      const midX = (px + cx) / 2;
-      const midY = (py + cy) / 2 - sag;
+      // Creature Struggle & Pull Logic
+      if (Math.random() < 0.08) {
+        // Creature tries to pull away or shake
+        this.activeCreatureForCapture.x += (Math.random() - 0.5) * 20;
+        this.activeCreatureForCapture.y += (Math.random() - 0.5) * 20;
+        
+        // Dust particles for struggle
+        const dust = this.add.circle(cx, cy + 10, 2 + Math.random() * 3, 0xdfb78c);
+        dust.setDepth(130);
+        this.tweens.add({
+          targets: dust,
+          y: '-=15',
+          scale: 1.5,
+          alpha: 0,
+          duration: 500,
+          onComplete: () => dust.destroy()
+        });
+      }
+
+      // Render the actual rope sprite instead of graphics
+      const dist = Phaser.Math.Distance.Between(px, py, cx, cy);
+      const angle = Phaser.Math.Angle.Between(px, py, cx, cy);
       
-      // Rope shadow
-      this.qteRopeGraphics.lineStyle(4, 0x000000, 0.2);
-      this.qteRopeGraphics.beginPath();
-      this.qteRopeGraphics.moveTo(px, py);
-      this.qteRopeGraphics.lineTo(midX, midY);
-      this.qteRopeGraphics.lineTo(cx, cy);
-      this.qteRopeGraphics.strokePath();
+      this.qteRopeSprite.setPosition(px, py);
+      this.qteRopeSprite.setSize(dist, 6);
+      this.qteRopeSprite.setRotation(angle);
       
-      // Rope line
-      const baseRopeColor = this.getEquippedRopeColor();
-      const ropeColor = progress > 0.6 ? baseRopeColor : progress > 0.3 ? 0xd4a574 : 0xe86868;
-      this.qteRopeGraphics.lineStyle(3, ropeColor, 0.9);
-      this.qteRopeGraphics.beginPath();
-      this.qteRopeGraphics.moveTo(px, py);
-      this.qteRopeGraphics.lineTo(midX, midY);
-      this.qteRopeGraphics.lineTo(cx, cy);
-      this.qteRopeGraphics.strokePath();
+      // Rope animation (stretching & wobble)
+      if (this.isPulling) {
+        this.qteRopeSprite.tilePositionX -= 4; // visual pulling
+      } else {
+        this.qteRopeSprite.tilePositionX += 1; // slipping away
+      }
+
+      if (progress < 1) {
+        this.qteRopeSprite.y += Math.sin(time / 40) * (1 - progress) * 8; // Wobble tension
+      }
       
+      if (progress > 0.6) {
+        this.qteRopeSprite.setTint(0xffffff); // normal
+      } else if (progress > 0.3) {
+        this.qteRopeSprite.setTint(0xffaa55); // straining
+      } else {
+        this.qteRopeSprite.setTint(0xff5555); // breaking
+      }
+
       // Pull effect - pulses when pulled
       this.qtePullEffect.clear();
-      this.qtePullEffect.fillStyle(0xffd9a0, 0.3);
-      this.qtePullEffect.fillCircle(midX, midY, 6 + (1 - progress) * 8);
-      this.qteRopeGraphics.setDepth(130);
+      this.qtePullEffect.fillStyle(0xffd9a0, 0.4);
+      this.qtePullEffect.fillCircle((px + cx)/2, (py + cy)/2, 6 + (1 - progress) * 8);
 
-      if (this.towProgress <= 0 || this.towTimerRemaining <= 0) {
+      if (this.towProgress >= 100) {
+        this.endTowMinigame(true);
+      } else if (this.towProgress <= 0 || this.towTimerRemaining <= 0) {
         this.endTowMinigame(false);
       }
     }
@@ -2837,7 +2900,10 @@ export class ExploreScene extends Phaser.Scene {
       } else if (targetType === 'merchant') {
         promptText = '[SPACE] MERCH SHOP';
       } else if (targetType === 'portal') {
-        promptText = '[E] Travel to Sanctuary';
+        promptText = 'Travel to Sanctuary';
+        if (closestDist <= 35 && !this.isTransitioning) {
+          this.transitionToSanctuary();
+        }
       } else if (targetType === 'sellbox') {
         promptText = '[SPACE] SELL CREATURES';
       } else if (targetType === 'research_lab') {

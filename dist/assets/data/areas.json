@@ -13,52 +13,28 @@
       "description": "The gentle starting region of Wild Haven. Open fields, low capture difficulty, and the friendliest creatures make this the perfect place to learn the ropes."
     },
     {
-      "id": "whisper_forest",
-      "name": "Whisper Forest",
+      "id": "undead_map",
+      "name": "Undead Realm",
       "order": 2,
       "unlockLevel": 5,
       "unlockCost": 1500,
-      "theme": "Dense canopy, dappled light, fireflies, mysterious and calm",
+      "theme": "Spooky, undead, dark, glowing green",
       "musicTrack": "music_forest",
       "ambienceSfx": ["owl_hoot", "leaves_rustle", "distant_creek"],
-      "palette": ["#3F7D4D", "#2A5C38", "#A8D8B9", "#FFE9A8"],
-      "description": "A shaded woodland where light filters softly through tall trees. Creatures here are shier and quicker, rewarding patient explorers."
+      "palette": ["#1A2521", "#334D41", "#8FD14F", "#000000"],
+      "description": "A spooky graveyard where undead creatures roam. Watch out for the glowing bones!"
     },
     {
-      "id": "crystal_mountain",
-      "name": "Crystal Mountain",
+      "id": "coming_soon",
+      "name": "Coming Soon",
       "order": 3,
-      "unlockLevel": 10,
-      "unlockCost": 6000,
-      "theme": "Snowy peaks, glowing crystal outcrops, crisp cold air",
-      "musicTrack": "music_mountain",
-      "ambienceSfx": ["wind_gust", "crystal_chime", "distant_echo"],
-      "palette": ["#A0E7E5", "#6FC7C3", "#D6C8FF", "#FFFFFF"],
-      "description": "Jagged peaks lined with luminous crystal veins. The thin air and slippery slopes make captures here noticeably tougher."
-    },
-    {
-      "id": "golden_dunes",
-      "name": "Golden Dunes",
-      "order": 4,
-      "unlockLevel": 18,
-      "unlockCost": 20000,
-      "theme": "Warm sandy dunes, oasis pockets, heat shimmer, golden hour lighting",
-      "musicTrack": "music_desert",
-      "ambienceSfx": ["wind_sand", "distant_camel_call", "oasis_water"],
-      "palette": ["#F2C879", "#E8A23D", "#FFE0B2", "#FF9F45"],
-      "description": "Endless rolling dunes under a golden sky. Creatures move fast to escape the heat, demanding sharper timing to capture."
-    },
-    {
-      "id": "sky_island",
-      "name": "Sky Island",
-      "order": 5,
-      "unlockLevel": 28,
-      "unlockCost": 75000,
-      "theme": "Floating islands above the clouds, soft pastel light, endgame wonder",
-      "musicTrack": "music_sanctuary_sky",
-      "ambienceSfx": ["wind_high_altitude", "soft_chimes", "distant_thunder"],
-      "palette": ["#FFD9A0", "#FFFFFF", "#B89CFF", "#FF5C8A"],
-      "description": "Drifting islands suspended above the clouds, home to the rarest and most legendary creatures in all of Wild Haven."
+      "unlockLevel": 999,
+      "unlockCost": 999999,
+      "theme": "Mystery",
+      "musicTrack": "music_meadow",
+      "ambienceSfx": [],
+      "palette": ["#555555", "#888888", "#AAAAAA", "#FFFFFF"],
+      "description": "A mysterious new area is currently under development. Stay tuned for future updates!"
     }
   ]
 }

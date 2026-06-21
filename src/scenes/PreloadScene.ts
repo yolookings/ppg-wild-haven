@@ -151,6 +151,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('luna_information', 'assets/character/luna/luna-information.png');
     this.load.image('luna_npc', 'assets/character/luna/luna-top-down.png');
     this.load.image('modal_window', 'assets/modal-window.png');
+    this.load.image('undead_background', 'assets/undead-background.png');
 
     // Headlines
     
@@ -775,6 +776,75 @@ export class PreloadScene extends Phaser.Scene {
       if (!ctx) return;
       draw(ctx);
       canvas.refresh();
+    });
+
+    if (!this.textures.exists('rope_texture')) {
+      const ropeCanvas = this.textures.createCanvas('rope_texture', 16, 8);
+      if (ropeCanvas && ropeCanvas.context) {
+        const ctx = ropeCanvas.context;
+        // Draw braided rope pattern
+        ctx.fillStyle = '#8a5200'; // Dark brown shadow/border
+        ctx.fillRect(0, 0, 16, 8);
+        ctx.fillStyle = '#cda075'; // Lighter brown
+        ctx.fillRect(0, 1, 16, 6);
+        ctx.fillStyle = '#fce4c4'; // Highlight
+        ctx.beginPath();
+        ctx.moveTo(0, 6);
+        ctx.lineTo(6, 0);
+        ctx.lineTo(8, 0);
+        ctx.lineTo(2, 6);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(8, 6);
+        ctx.lineTo(14, 0);
+        ctx.lineTo(16, 0);
+        ctx.lineTo(10, 6);
+        ctx.fill();
+        ropeCanvas.refresh();
+      }
+    }
+
+    // Generate Rope Icons for Shop
+    const ropeIcons = [
+      { key: 'rope_basic', color: '#cda075', hl: '#fce4c4' },
+      { key: 'rope_strong', color: '#888888', hl: '#cccccc' },
+      { key: 'rope_magic', color: '#9b59b6', hl: '#e8b9f7' },
+      { key: 'rope_divine', color: '#ffd700', hl: '#ffffe0' }
+    ];
+
+    ropeIcons.forEach(({ key, color, hl }) => {
+      if (this.textures.exists(key)) return;
+      const cvs = this.textures.createCanvas(key, 64, 64);
+      if (!cvs || !cvs.context) return;
+      const ctx = cvs.context;
+
+      // Draw a coiled rope icon
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#3e2723';
+      ctx.beginPath();
+      ctx.arc(32, 32, 22, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.arc(32, 32, 22, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner coil
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = '#3e2723';
+      ctx.beginPath();
+      ctx.arc(32, 32, 14, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = hl;
+      ctx.beginPath();
+      ctx.arc(32, 32, 14, 0, Math.PI * 2);
+      ctx.stroke();
+
+      cvs.refresh();
     });
   }
 
