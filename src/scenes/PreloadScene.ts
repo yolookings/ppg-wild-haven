@@ -152,6 +152,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('luna_npc', 'assets/character/luna/luna-top-down.png');
     this.load.image('modal_window', 'assets/modal-window.png');
     this.load.image('undead_background', 'assets/undead-background.png');
+    this.load.image('credit_photo', 'assets/credit.jpeg');
 
     // Headlines
     

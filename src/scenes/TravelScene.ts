@@ -47,6 +47,11 @@ export class TravelScene extends Phaser.Scene {
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
+    // Hide UI during loading travel
+    if (this.scene.isActive('UIScene')) {
+      this.scene.setVisible(false, 'UIScene');
+    }
+
     const isMobile = width < 768;
     const globalScale = isMobile ? 0.75 : 1.2;
 

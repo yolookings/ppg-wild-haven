@@ -97,6 +97,7 @@ export class ExploreScene extends Phaser.Scene {
     if (!this.scene.isActive('UIScene')) {
       this.scene.launch('UIScene');
     }
+    this.scene.setVisible(true, 'UIScene');
     this.scene.bringToTop('UIScene');
 
     // Update Area label in HUD

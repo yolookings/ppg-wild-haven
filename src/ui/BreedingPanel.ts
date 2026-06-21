@@ -6,13 +6,14 @@ import { Creature } from '../data/types';
 import { AudioManager } from '../systems/AudioManager';
 import { EventBus } from '../systems/EventBus';
 import { AchievementSystem } from '../systems/AchievementSystem';
+import { CreatureVisuals } from '../utils/CreatureVisuals';
 
 export class BreedingPanel extends Phaser.GameObjects.Container {
   private panelBg!: Phaser.GameObjects.NineSlice;
   private parentASlot!: Phaser.GameObjects.NineSlice;
   private parentBSlot!: Phaser.GameObjects.NineSlice;
-  private parentASprite!: Phaser.GameObjects.Image;
-  private parentBSprite!: Phaser.GameObjects.Image;
+  private parentASprite!: Phaser.GameObjects.Sprite;
+  private parentBSprite!: Phaser.GameObjects.Sprite;
   private parentAText!: Phaser.GameObjects.Text;
   private parentBText!: Phaser.GameObjects.Text;
 
@@ -85,7 +86,7 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
     this.parentASlot.on('pointerdown', () => this.openSelector('A'));
     this.add(this.parentASlot);
 
-    this.parentASprite = scene.add.image(-slotX, -50, 'creature_meadow').setScale(2.5).setVisible(false);
+    this.parentASprite = scene.add.sprite(-slotX, -50, 'creature_meadow').setScale(2.5).setVisible(false);
     this.add(this.parentASprite);
 
     this.parentAText = scene.add.text(-slotX, 0, 'Select Parent A\n(Click Here)', {
@@ -110,7 +111,7 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
     this.parentBSlot.on('pointerdown', () => this.openSelector('B'));
     this.add(this.parentBSlot);
 
-    this.parentBSprite = scene.add.image(slotX, -50, 'creature_meadow').setScale(2.5).setVisible(false);
+    this.parentBSprite = scene.add.sprite(slotX, -50, 'creature_meadow').setScale(2.5).setVisible(false);
     this.add(this.parentBSprite);
 
     this.parentBText = scene.add.text(slotX, 0, 'Select Parent B\n(Click Here)', {
@@ -291,13 +292,13 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
 
       const cData = DataLoader.getCreature(oc.creatureId);
       if (cData) {
-        let spriteKey = 'creature_meadow';
-        if (cData.area === 'whisper_forest') spriteKey = 'creature_forest';
-        else if (cData.area === 'crystal_mountain') spriteKey = 'creature_mountain';
-        else if (cData.area === 'golden_dunes') spriteKey = 'creature_dunes';
-        else if (cData.area === 'sky_island') spriteKey = 'creature_sky';
-
-        const sprite = this.scene.add.image(0, -8, spriteKey).setScale(1.6);
+        const visuals = CreatureVisuals.getVisuals(cData as any);
+        const sprite = this.scene.add.sprite(0, -8, visuals.spriteKey);
+        sprite.setTint(visuals.tint);
+        sprite.setScale(1.6 * visuals.scaleMult);
+        if (visuals.isAnimated && visuals.animalType) {
+          sprite.play(`animal_${visuals.animalType}_idle_down`);
+        }
         item.add(sprite);
 
         const nameTxt = this.scene.add.text(0, 22, oc.nickname || cData.name, {
@@ -326,19 +327,25 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
     const oc = state.ownedCreatures[index];
     const cData = DataLoader.getCreature(oc.creatureId)!;
 
-    let spriteKey = 'creature_meadow';
-    if (cData.area === 'whisper_forest') spriteKey = 'creature_forest';
-    else if (cData.area === 'crystal_mountain') spriteKey = 'creature_mountain';
-    else if (cData.area === 'golden_dunes') spriteKey = 'creature_dunes';
-    else if (cData.area === 'sky_island') spriteKey = 'creature_sky';
+    const visuals = CreatureVisuals.getVisuals(cData as any);
 
     if (this.choosingSlot === 'A') {
       this.selectedParentAIdx = index;
-      this.parentASprite.setTexture(spriteKey).setVisible(true);
+      this.parentASprite.setTexture(visuals.spriteKey).setTint(visuals.tint).setScale(2.5 * visuals.scaleMult).setVisible(true);
+      if (visuals.isAnimated && visuals.animalType) {
+        this.parentASprite.play(`animal_${visuals.animalType}_idle_down`);
+      } else {
+        this.parentASprite.stop();
+      }
       this.parentAText.setText(oc.nickname || cData.name).setPosition(-120, 32);
     } else {
       this.selectedParentBIdx = index;
-      this.parentBSprite.setTexture(spriteKey).setVisible(true);
+      this.parentBSprite.setTexture(visuals.spriteKey).setTint(visuals.tint).setScale(2.5 * visuals.scaleMult).setVisible(true);
+      if (visuals.isAnimated && visuals.animalType) {
+        this.parentBSprite.play(`animal_${visuals.animalType}_idle_down`);
+      } else {
+        this.parentBSprite.stop();
+      }
       this.parentBText.setText(oc.nickname || cData.name).setPosition(120, 32);
     }
 
@@ -486,13 +493,13 @@ export class BreedingPanel extends Phaser.GameObjects.Container {
     }).setOrigin(0.5);
 
     // Large floating egg or creature sprite
-    let spriteKey = 'creature_meadow';
-    if (creature.area === 'whisper_forest') spriteKey = 'creature_forest';
-    else if (creature.area === 'crystal_mountain') spriteKey = 'creature_mountain';
-    else if (creature.area === 'golden_dunes') spriteKey = 'creature_dunes';
-    else if (creature.area === 'sky_island') spriteKey = 'creature_sky';
-
-    const sprite = this.scene.add.image(0, -15, spriteKey).setScale(4.5);
+    const visuals = CreatureVisuals.getVisuals(creature as any);
+    const sprite = this.scene.add.sprite(0, -15, visuals.spriteKey);
+    sprite.setTint(visuals.tint);
+    sprite.setScale(4.5 * visuals.scaleMult);
+    if (visuals.isAnimated && visuals.animalType) {
+      sprite.play(`animal_${visuals.animalType}_idle_down`);
+    }
     
     // Heart sparkles
     const sparkles = this.scene.add.graphics();

@@ -164,9 +164,20 @@ export class SettingsPanel extends Phaser.GameObjects.Container {
       AudioManager.playSfx('ui_tap');
     });
 
-    // Reset progress
+    // Back to Homescreen & Reset Progress
     startY += 60;
-    this.createActionButton(0, startY, 'RESET ALL PROGRESS', () => {
+    this.createActionButton(-110, startY, 'Back to Homescreen', () => {
+      SaveSystem.forceSave();
+      AudioManager.fadeOutAndStop(800);
+      this.scene.cameras.main.fadeOut(800, 26, 35, 30);
+      this.scene.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.scene.stop('SanctuaryScene');
+        this.scene.scene.stop('ExploreScene');
+        this.scene.scene.start('MainMenuScene');
+      });
+    });
+
+    this.createActionButton(110, startY, 'RESET ALL PROGRESS', () => {
       if (confirm('Are you absolutely sure you want to delete all your progress? This cannot be undone.')) {
         SaveSystem.resetGame();
         alert('Your sanctuary has been reset. Starting anew!');

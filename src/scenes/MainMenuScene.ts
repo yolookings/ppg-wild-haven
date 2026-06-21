@@ -1,6 +1,7 @@
 // src/scenes/MainMenuScene.ts
 import Phaser from 'phaser';
 import { AudioManager } from '../systems/AudioManager';
+import { SaveSystem } from '../systems/SaveSystem';
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -502,18 +503,36 @@ export class MainMenuScene extends Phaser.Scene {
   // ================================================================
   private createButtons(w: number, h: number): void {
     const cx = w / 2;
-    const startY = h * 0.54;
+    const startY = h * 0.46; // adjusted up to fit more buttons
+    let yOffset = 0;
+    let entranceIdx = 0;
 
-    this.createButton(cx, startY, 'Enter Sanctuary', 300, 60, 24, () => {
+    const hasSave = localStorage.getItem('wildhaven_save_v1') !== null;
+
+    this.createButton(cx, startY + yOffset, 'New Game', 300, 60, 24, () => {
       AudioManager.playSfx('ui_confirm');
+      SaveSystem.resetGame();
       AudioManager.fadeOutAndStop(800);
       this.cameras.main.fadeOut(800, 26, 35, 30);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('TravelScene', { targetScene: 'SanctuaryScene' });
       });
-    }, 0);
+    }, entranceIdx++);
+    yOffset += 70;
 
-    this.createButton(cx, startY + 74, 'Settings', 300, 60, 24, () => {
+    if (hasSave) {
+      this.createButton(cx, startY + yOffset, 'Load Game', 300, 60, 24, () => {
+        AudioManager.playSfx('ui_confirm');
+        AudioManager.fadeOutAndStop(800);
+        this.cameras.main.fadeOut(800, 26, 35, 30);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.start('TravelScene', { targetScene: 'SanctuaryScene' });
+        });
+      }, entranceIdx++);
+      yOffset += 70;
+    }
+
+    this.createButton(cx, startY + yOffset, 'Settings', 300, 60, 24, () => {
       AudioManager.playSfx('ui_tap');
       this.scene.launch('UIScene');
       this.time.delayedCall(50, () => {
@@ -522,7 +541,112 @@ export class MainMenuScene extends Phaser.Scene {
           uiScene.showSettingsPanel();
         }
       });
-    }, 1);
+    }, entranceIdx++);
+    yOffset += 70;
+
+    this.createButton(cx, startY + yOffset, 'Credit', 300, 60, 24, () => {
+      AudioManager.playSfx('ui_tap');
+      this.showCreditPanel(w, h);
+    }, entranceIdx++);
+    yOffset += 70;
+
+    this.createButton(cx, startY + yOffset, 'Exit Game', 300, 60, 24, () => {
+      AudioManager.playSfx('ui_tap');
+      if (window.confirm("Are you sure you want to exit?")) {
+        window.close();
+      }
+    }, entranceIdx++);
+  }
+
+  private showCreditPanel(w: number, h: number): void {
+    const container = this.add.container(w / 2, h / 2);
+    container.setDepth(100);
+
+    const overlay = this.add.graphics();
+    overlay.fillStyle(0x000000, 0.7);
+    overlay.fillRect(-w/2, -h/2, w, h);
+    overlay.setInteractive(new Phaser.Geom.Rectangle(-w/2, -h/2, w, h), Phaser.Geom.Rectangle.Contains);
+    
+    const bg = this.add.nineslice(0, 0, 'modal_window', 0, 400, 500, 32, 32, 32, 32);
+
+    const title = this.add.text(0, -200, 'CREDITS', {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '28px',
+      fontStyle: 'bold',
+      color: '#5c4832'
+    }).setOrigin(0.5);
+
+    // Photo from credit.jpeg
+    const photoFrame = this.add.graphics();
+    photoFrame.fillStyle(0x8c765c, 1);
+    photoFrame.fillRoundedRect(-65, -150, 130, 130, 16);
+    
+    const photoImg = this.add.image(0, -85, 'credit_photo');
+    // Scale photo to fit within 120x120 roughly
+    const scaleFactor = 120 / Math.max(photoImg.width, photoImg.height, 1);
+    photoImg.setScale(scaleFactor);
+    
+    // Optional: create a rounded mask for the photo to fit inside the frame nicely
+    const maskShape = this.add.graphics();
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillRoundedRect(-60, -145, 120, 120, 12);
+    // Position the mask geometry relative to the world position
+    maskShape.setPosition(w / 2, h / 2);
+    const mask = maskShape.createGeometryMask();
+    photoImg.setMask(mask);
+    
+    const photoText = this.add.text(0, -35, 'Mwlanaz', {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '12px',
+      color: '#fff',
+      fontStyle: 'bold'
+    }).setOrigin(0.5);
+
+    const bioTitle = this.add.text(0, 20, 'mwlanaz', {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '24px',
+      fontStyle: 'bold',
+      color: '#8fd14f'
+    }).setOrigin(0.5);
+
+    const bioDesc = this.add.text(0, 80, 'Game Developer & Designer\nPassionate about creating\ncozy creature sanctuaries\nand engaging experiences.', {
+      fontFamily: 'Inter, sans-serif',
+      fontSize: '16px',
+      color: '#5c4832',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    const closeBtn = this.add.nineslice(0, 180, 'button', 0, 140, 45, 12, 12, 12, 12);
+    closeBtn.setInteractive({ useHandCursor: true });
+    
+    const closeTxt = this.add.text(0, 180, 'Close', {
+      fontFamily: 'Outfit, sans-serif',
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#5c4832'
+    }).setOrigin(0.5);
+
+    closeBtn.on('pointerover', () => {
+      closeBtn.setTint(0xffeedd);
+      AudioManager.playSfx('button_hover');
+    });
+    closeBtn.on('pointerout', () => {
+      closeBtn.clearTint();
+    });
+    closeBtn.on('pointerdown', () => {
+      AudioManager.playSfx('ui_tap');
+      container.destroy();
+    });
+    container.add([overlay, bg, title, photoFrame, photoImg, photoText, bioTitle, bioDesc, closeBtn, closeTxt]);
+
+    // Popup animation
+    container.setScale(0.1);
+    this.tweens.add({
+      targets: container,
+      scale: 1,
+      duration: 300,
+      ease: 'Back.easeOut'
+    });
   }
 
   private createButton(

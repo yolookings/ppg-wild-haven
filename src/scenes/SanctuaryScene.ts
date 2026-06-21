@@ -59,6 +59,7 @@ export class SanctuaryScene extends Phaser.Scene {
     if (!this.scene.isActive('UIScene')) {
       this.scene.launch('UIScene');
     }
+    this.scene.setVisible(true, 'UIScene');
     this.scene.bringToTop('UIScene');
 
     // Update Area Name in HUD
@@ -73,9 +74,9 @@ export class SanctuaryScene extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 26, 35, 30);
     AudioManager.playMusic('music_medieval');
 
-    // Setup world boundaries (1200 x 900 map size)
-    const mapW = 1200;
-    const mapH = 900;
+    // Setup world boundaries dynamically to fit the screen
+    const mapW = Math.max(1200, width);
+    const mapH = Math.max(900, height);
     this.physics.world.setBounds(0, 0, mapW, mapH);
 
     // ==========================================
@@ -100,8 +101,8 @@ export class SanctuaryScene extends Phaser.Scene {
       {
         id: 'sanctuary',
         name: 'Wild Haven Sanctuary',
-        x1: 60, x2: 1140, y1: 60, y2: 840,
-        gateX: 600, gateY: 840,
+        x1: 60, x2: mapW - 60, y1: 60, y2: mapH - 60,
+        gateX: mapW / 2, gateY: mapH - 60,
         capacity: 100,
         allowedBiomes: ['green_meadow', 'whisper_forest', 'crystal_mountain', 'golden_dunes', 'sky_island'],
         decorations: []
@@ -119,7 +120,7 @@ export class SanctuaryScene extends Phaser.Scene {
     // 5. Instantiate Player
     // ==========================================
     // Center Spawn (Near Campfire)
-    this.player = new Player(this, 600, 520);
+    this.player = new Player(this, mapW / 2, mapH / 2 + 70);
     this.add.existing(this.player);
     this.physics.add.collider(this.player, this.obstaclesGroup);
 
@@ -613,9 +614,10 @@ export class SanctuaryScene extends Phaser.Scene {
     this.portals = [];
 
     const state = SaveSystem.getState();
+    const mapW = this.physics.world.bounds.width;
 
     const portalConfigs = [
-      { areaId: 'explore_menu', x: 1050, y: 150, color: 0x9b59b6 }
+      { areaId: 'explore_menu', x: mapW - 150, y: 150, color: 0x9b59b6 }
     ];
 
     portalConfigs.forEach(cfg => {

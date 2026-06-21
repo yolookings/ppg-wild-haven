@@ -39,6 +39,8 @@ export class UIScene extends Phaser.Scene {
   private tutorialArrow!: Phaser.GameObjects.Graphics;
   private lastTutorialStepDialoguePlayed = -1;
 
+  private hasCheckedOfflineEarnings = false;
+
   constructor() {
     super({ key: 'UIScene', active: false });
   }
@@ -119,11 +121,7 @@ export class UIScene extends Phaser.Scene {
     // Handle screen resizing
     this.scale.on('resize', this.handleResize, this);
 
-    // Check offline earnings and login streak on first boot
-    this.time.delayedCall(800, () => {
-      this.checkOfflineEarnings();
-      AchievementSystem.checkDailyStreak();
-    });
+    // Offline checks are deferred until we are in-game (handled in update)
   }
 
   public showSettingsPanel(): void {
@@ -510,6 +508,26 @@ export class UIScene extends Phaser.Scene {
   update(_time: number, _delta: number): void {
     this.checkTutorialProgress();
     this.updateTutorialArrow();
+
+    // Auto-hide HUD if MainMenuScene is the active scene
+    if (this.scene.manager.isActive('MainMenuScene')) {
+      if (this.hud && this.hud.visible) {
+        this.hud.setVisible(false);
+      }
+    } else {
+      if (this.hud && !this.hud.visible) {
+        this.hud.setVisible(true);
+      }
+      
+      // Perform offline checks once we enter the game
+      if (!this.hasCheckedOfflineEarnings) {
+        this.hasCheckedOfflineEarnings = true;
+        this.time.delayedCall(500, () => {
+          this.checkOfflineEarnings();
+          AchievementSystem.checkDailyStreak();
+        });
+      }
+    }
   }
 
   private checkTutorialProgress(): void {
