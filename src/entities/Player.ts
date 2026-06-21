@@ -63,7 +63,16 @@ export class Player extends Phaser.GameObjects.Container {
       if (DialogueManager.isDialogueActive() || (scene as any).isQteActive || pointer.y > scene.cameras.main.height - 85 || pointer.y < 85) {
         return;
       }
-      this.setMoveTarget(pointer.x, pointer.y);
+      this.setMoveTarget(pointer.worldX, pointer.worldY);
+    });
+
+    scene.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.isDown) {
+        if (DialogueManager.isDialogueActive() || (scene as any).isQteActive || pointer.y > scene.cameras.main.height - 85 || pointer.y < 85) {
+          return;
+        }
+        this.setMoveTarget(pointer.worldX, pointer.worldY);
+      }
     });
 
     this.drawShadow();

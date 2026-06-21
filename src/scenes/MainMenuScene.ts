@@ -581,9 +581,10 @@ export class MainMenuScene extends Phaser.Scene {
     photoFrame.fillStyle(0x8c765c, 1);
     photoFrame.fillRoundedRect(-65, -150, 130, 130, 16);
     
-    const photoImg = this.add.image(0, -85, 'credit_photo');
-    // Scale photo to fit within 120x120 roughly
-    const scaleFactor = 120 / Math.max(photoImg.width, photoImg.height, 1);
+    const photoImg = this.add.image(0, -85, 'developer_photo');
+    // Scale photo to cover the 120x120 frame completely
+    const side = Math.min(photoImg.width, photoImg.height);
+    const scaleFactor = 120 / (side > 0 ? side : 1);
     photoImg.setScale(scaleFactor);
     
     // Optional: create a rounded mask for the photo to fit inside the frame nicely
@@ -592,26 +593,28 @@ export class MainMenuScene extends Phaser.Scene {
     maskShape.fillRoundedRect(-60, -145, 120, 120, 12);
     // Position the mask geometry relative to the world position
     maskShape.setPosition(w / 2, h / 2);
+    maskShape.setVisible(false); // Fix white background bug
     const mask = maskShape.createGeometryMask();
     photoImg.setMask(mask);
     
-    const photoText = this.add.text(0, -35, 'Mwlanaz', {
+    const photoText = this.add.text(0, -15, 'Developer', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '12px',
+      fontSize: '11px',
       color: '#fff',
       fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    const bioTitle = this.add.text(0, 20, 'mwlanaz', {
+    const bioTitle = this.add.text(0, 15, 'Maulana Ahmad Zahiri', {
       fontFamily: 'Outfit, sans-serif',
-      fontSize: '24px',
+      fontSize: '22px',
       fontStyle: 'bold',
       color: '#8fd14f'
     }).setOrigin(0.5);
 
-    const bioDesc = this.add.text(0, 80, 'Game Developer & Designer\nPassionate about creating\ncozy creature sanctuaries\nand engaging experiences.', {
+    const bioDesc = this.add.text(0, 85, 'NRP: 5027231010\nmaulanazahiri31@gmail.com\n\nKuliah Pengantar Pengembangan Game ITS 2026\nDosen: Imam Kuswardayan, S.Kom, M.T', {
       fontFamily: 'Inter, sans-serif',
-      fontSize: '16px',
+      fontSize: '13px',
+      lineSpacing: 4,
       color: '#5c4832',
       align: 'center'
     }).setOrigin(0.5);
@@ -635,6 +638,7 @@ export class MainMenuScene extends Phaser.Scene {
     });
     closeBtn.on('pointerdown', () => {
       AudioManager.playSfx('ui_tap');
+      maskShape.destroy();
       container.destroy();
     });
     container.add([overlay, bg, title, photoFrame, photoImg, photoText, bioTitle, bioDesc, closeBtn, closeTxt]);
